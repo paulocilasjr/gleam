@@ -1,0 +1,30 @@
+categories: 
+  - Machine Learning
+description: A powerful and robust low-code library for simplifying machine learning workflows with PyCaret.
+name: galaxy_pycaret
+owner: goeckslab
+long_description: |
+ Galaxy-PyCaret brings the power of PyCaret to the Galaxy platform,
+ focusing on essential machine learning tasks like model comparison,
+ prediction, and evaluation. It enables users to easily analyze data,
+ compare algorithms, and generate predictions with minimal coding. 
+ Designed for simplicity and efficiency, 
+ Galaxy-PyCaret is ideal for researchers and
+ data scientists seeking streamlined workflows for machine learning tasks within Galaxy.
+remote_repository_url: https://github.com/goeckslab/Galaxy-Pycaret
+homepage_url: https://github.com/goeckslab/Galaxy-Pycaret
+
+auto_tool_repositories:
+  name_template: "{{ tool_id }}"
+  description_template: "Wrapper for pycaret tool: {{ tool_name }}"
+suite:
+  name: suite_pycaret
+  description: A powerful and robust low-code library for simplifying machine learning workflows with PyCaret.
+  long_description: |
+   Galaxy-PyCaret brings the power of PyCaret to the Galaxy platform,
+   focusing on essential machine learning tasks like model comparison,
+   prediction, and evaluation. It enables users to easily analyze data,
+   compare algorithms, and generate predictions with minimal coding. 
+   Designed for simplicity and efficiency, 
+   Galaxy-PyCaret is ideal for researchers and
+   data scientists seeking streamlined workflows for machine learning tasks within Galaxy.
