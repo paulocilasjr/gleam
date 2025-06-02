@@ -70,4 +70,6 @@ tool_test_output.json
 
 !tools/*/test-data/*.zip
 
+.venv
+
 

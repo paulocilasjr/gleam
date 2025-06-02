@@ -1,15 +1,16 @@
-<tool id="image_learner" name="Image Learner for Classification" version="@VERSION@" profile="@PROFILE@">
+<tool id="image_learner" name="Image Learner for Classification" version="0.1.0" profile="22.05">
     <description>trains and evaluates a image classification model</description>
-    <macros>
-        <import>ludwig_macros.xml</import>
-    </macros>
-    <expand macro="python_requirements_gpu" />
+    <requirements>
+        <container type="docker">quay.io/goeckslab/galaxy-ludwig-gpu:0.10.1</container>
+    </requirements>
     <required_files>
         <include path="utils.py" />
         <include path="image_learner_cli.py" />
     </required_files>
-    <expand macro="macro_stdio" />
-    <version_command>echo "@VERSION@"</version_command>
+    <stdio>
+        <exit_code range="137" level="fatal_oom" description="Out of Memory" />
+        <exit_code range="1:" level="fatal" description="Error occurred. Please check Tool Standard Error" />
+    </stdio>
     <command>
         <![CDATA[
             #import re
@@ -253,5 +254,17 @@ The html report will contain metrics&experiment setup parameters, train&val plot
 
         ]]>
     </help>
-    <expand macro="macro_citations" />
+    <citations>
+            <citation type="bibtex">
+@misc{https://doi.org/10.48550/arxiv.1909.07930,
+    doi = {10.48550/ARXIV.1909.07930},
+    url = {https://arxiv.org/abs/1909.07930},
+    author = {Molino, Piero and Dudin, Yaroslav and Miryala, Sai Sumanth},
+    title = {Ludwig: a type-based declarative deep learning toolbox},
+    publisher = {arXiv},
+    year = {2019},
+    copyright = {arXiv.org perpetual, non-exclusive license}
+}
+            </citation>
+        </citations>
 </tool>

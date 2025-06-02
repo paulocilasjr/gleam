@@ -161,4 +161,4 @@ def encode_image_to_base64(image_path):
 
 def predict_proba(self, X):
     pred = self.predict(X)
-    return np.array([1-pred, pred]).T
+    return np.array([1 - pred, pred]).T

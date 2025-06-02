@@ -1,11 +1,8 @@
 import logging
 
 from base_model_trainer import BaseModelTrainer
-
 from dashboard import generate_classifier_explainer_dashboard
-
 from pycaret.classification import ClassificationExperiment
-
 from utils import add_hr_to_html, add_plot_to_html, predict_proba
 
 LOG = logging.getLogger(__name__)
@@ -64,8 +61,7 @@ class ClassificationModelTrainer(BaseModelTrainer):
                                                         'macro': False,
                                                         'per_class': False,
                                                         'binary': True
-                                                        }
-                                                    )
+                                                    })
                     self.plots[plot_name] = plot_path
                     continue
 

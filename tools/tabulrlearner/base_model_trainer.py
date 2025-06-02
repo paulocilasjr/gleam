@@ -3,18 +3,12 @@ import logging
 import os
 import tempfile
 
-from feature_importance import FeatureImportanceAnalyzer
-
 import h5py
-
 import joblib
-
 import numpy as np
-
 import pandas as pd
-
+from feature_importance import FeatureImportanceAnalyzer
 from sklearn.metrics import average_precision_score
-
 from utils import get_html_closing, get_html_template
 
 logging.basicConfig(level=logging.DEBUG)
@@ -31,8 +25,7 @@ class BaseModelTrainer:
             task_type,
             random_seed,
             test_file=None,
-            **kwargs
-            ):
+            **kwargs):
         self.exp = None  # This will be set in the subclass
         self.input_file = input_file
         self.target_col = target_col
@@ -71,7 +64,7 @@ class BaseModelTrainer:
             LOG.info(f"Non-numeric columns found: {non_numeric_cols.tolist()}")
 
         names = self.data.columns.to_list()
-        target_index = int(self.target_col)-1
+        target_index = int(self.target_col) - 1
         self.target = names[target_index]
         self.features_name = [name
                               for i, name in enumerate(names)
@@ -97,7 +90,7 @@ class BaseModelTrainer:
                 pd.to_numeric, errors='coerce')
             self.test_data.columns = self.test_data.columns.str.replace(
                 '.', '_'
-                )
+            )
 
     def setup_pycaret(self):
         LOG.info("Initializing PyCaret")

@@ -3,7 +3,6 @@ import logging
 
 from ludwig import automl
 from ludwig.utils import defaults
-
 from pandas import read_csv
 
 logging.basicConfig(level=logging.DEBUG)
@@ -39,7 +38,7 @@ def main():
     # get the output feature name
     df = read_csv(args.dataset, nrows=2, sep=None, engine='python')
     names = df.columns.tolist()
-    target = names[args.output_feature-1]
+    target = names[args.output_feature - 1]
 
     args_init = ["--dataset", args.dataset,
                  "--target", target,

@@ -8,9 +8,7 @@ from ludwig.globals import (
 )
 from ludwig.hyperopt_cli import cli
 from ludwig.visualize import get_visualizations_registry
-
 from model_unpickler import SafeUnpickler
-
 from utils import (
     encode_image_to_base64,
     get_html_closing,
@@ -84,7 +82,7 @@ def generate_html_report(title):
 output_directory = None
 for ix, arg in enumerate(sys.argv):
     if arg == "--output_directory":
-        output_directory = sys.argv[ix+1]
+        output_directory = sys.argv[ix + 1]
         break
 
 hyperopt_stats_path = os.path.join(

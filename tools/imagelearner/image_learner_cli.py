@@ -10,6 +10,8 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Protocol, Tuple
 
+import pandas as pd
+import yaml
 from ludwig.globals import (
     DESCRIPTION_FILE_NAME,
     PREDICTIONS_PARQUET_FILE_NAME,
@@ -18,15 +20,8 @@ from ludwig.globals import (
 )
 from ludwig.utils.data_utils import get_split_path
 from ludwig.visualize import get_visualizations_registry
-
-import pandas as pd
-
 from sklearn.model_selection import train_test_split
-
 from utils import encode_image_to_base64, get_html_closing, get_html_template
-
-import yaml
-
 
 # --- Constants ---
 SPLIT_COLUMN_NAME = 'split'
@@ -210,9 +205,7 @@ def format_config_table_html(
         "<thead><tr>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: left;'>Parameter</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Value</th>"
-        "</tr></thead><tbody>"
-        + "".join(rows) +
-        "</tbody></table></div><br>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div><br>"
         "<p style='text-align: center; font-size: 0.9em;'>"
         "Model trained using Ludwig.<br>"
         "If want to learn more about Ludwig default settings,"
@@ -270,9 +263,7 @@ def format_stats_table_html(training_stats: dict, test_stats: dict) -> str:
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Train</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Validation</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Test</th>"
-        "</tr></thead><tbody>" +
-        "".join(rows) +
-        "</tbody></table></div><br>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div><br>"
     )
 
 
@@ -399,7 +390,7 @@ def split_data_0_2(
 
     # Assign new splits
     out.loc[train_idx, split_column] = 0
-    out.loc[val_idx,   split_column] = 1
+    out.loc[val_idx, split_column] = 1
     # idx_test stays at 2
 
     # Cast back to a clean integer type

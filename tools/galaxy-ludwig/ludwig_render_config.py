@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 
+import yaml
 from ludwig.constants import (
     COMBINER,
     HYPEROPT,
@@ -13,7 +14,6 @@ from ludwig.constants import (
 )
 from ludwig.schema.model_types.utils import merge_with_defaults
 
-import yaml
 
 logging.basicConfig(level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
