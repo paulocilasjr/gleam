@@ -68,4 +68,6 @@ tool_test_output.json
 
 .DS_Store
 
+!tools/*/test-data/*.zip
+
 
