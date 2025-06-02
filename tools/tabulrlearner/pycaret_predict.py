@@ -3,16 +3,11 @@ import logging
 import tempfile
 
 import h5py
-
 import joblib
-
 import pandas as pd
-
 from pycaret.classification import ClassificationExperiment
 from pycaret.regression import RegressionExperiment
-
 from sklearn.metrics import average_precision_score
-
 from utils import encode_image_to_base64, get_html_closing, get_html_template
 
 LOG = logging.getLogger(__name__)
@@ -49,7 +44,7 @@ class ClassificationEvaluator(PyCaretModelEvaluator):
             exp = ClassificationExperiment()
             names = data.columns.to_list()
             LOG.error(f"Column names: {names}")
-            target_index = int(self.target)-1
+            target_index = int(self.target) - 1
             target_name = names[target_index]
             exp.setup(data, target=target_name, test_data=data, index=False)
             exp.add_metric(id='PR-AUC-Weighted',
@@ -73,8 +68,7 @@ class ClassificationEvaluator(PyCaretModelEvaluator):
                                                        'micro': False,
                                                        'macro': False,
                                                        'per_class': False,
-                                                       'binary': True
-                                                    })
+                                                       'binary': True})
                         plot_paths[plot_name] = plot_path
                         continue
 
@@ -101,7 +95,7 @@ class RegressionEvaluator(PyCaretModelEvaluator):
         data = pd.read_csv(data_path, engine='python', sep=None)
         if self.target:
             names = data.columns.to_list()
-            target_index = int(self.target)-1
+            target_index = int(self.target) - 1
             target_name = names[target_index]
             exp = RegressionExperiment()
             exp.setup(data, target=target_name, test_data=data, index=False)

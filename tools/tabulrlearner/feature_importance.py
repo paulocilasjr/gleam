@@ -3,9 +3,7 @@ import logging
 import os
 
 import matplotlib.pyplot as plt
-
 import pandas as pd
-
 from pycaret.classification import ClassificationExperiment
 from pycaret.regression import RegressionExperiment
 
