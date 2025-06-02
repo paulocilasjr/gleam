@@ -4,6 +4,7 @@ import os
 import pickle
 import sys
 
+import pandas as pd
 from ludwig.experiment import cli
 from ludwig.globals import (
     DESCRIPTION_FILE_NAME,
@@ -13,11 +14,7 @@ from ludwig.globals import (
 )
 from ludwig.utils.data_utils import get_split_path
 from ludwig.visualize import get_visualizations_registry
-
 from model_unpickler import SafeUnpickler
-
-import pandas as pd
-
 from utils import (
     encode_image_to_base64,
     get_html_closing,
@@ -35,7 +32,7 @@ setattr(pickle, 'Unpickler', SafeUnpickler)
 output_directory = None
 for ix, arg in enumerate(sys.argv):
     if arg == "--output_directory":
-        output_directory = sys.argv[ix+1]
+        output_directory = sys.argv[ix + 1]
         break
 
 viz_output_directory = os.path.join(output_directory, "visualizations")

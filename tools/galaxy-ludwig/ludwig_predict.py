@@ -3,9 +3,7 @@ import pickle
 import sys
 
 from ludwig.predict import cli
-
 from ludwig_experiment import convert_parquet_to_csv
-
 from model_unpickler import SafeUnpickler
 
 

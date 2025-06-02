@@ -3,7 +3,6 @@ import pickle
 import sys
 
 from ludwig.visualize import cli
-
 from model_unpickler import SafeUnpickler
 
 
