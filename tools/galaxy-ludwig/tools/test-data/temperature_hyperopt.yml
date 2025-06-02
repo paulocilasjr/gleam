@@ -1,0 +1,28 @@
+input_features:
+    -
+        name: temperature_feature
+        type: timeseries
+        encoder: rnn
+        embedding_size: 32
+        state_size: 32
+
+output_features:
+    -
+        name: temperature
+        type: numerical
+
+training:
+    epochs: 1
+
+hyperopt:
+    search_alg: 
+        type: random
+    executor:
+        type: ray
+        num_samples: 2
+    parameters:
+        training.learning_rate:
+            space: uniform
+            lower: 0.0001
+            upper: 0.1
+    split: validation
