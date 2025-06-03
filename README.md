@@ -1,41 +1,72 @@
-[![Galaxy Tool Linting and Tests for push and PR](https://github.com/galaxyproject/galaxy-tool-repository-template/actions/workflows/pr.yaml/badge.svg?branch=main)](https://github.com/galaxyproject/galaxy-tool-repository-template/actions/workflows/pr.yaml/badge.svg)
-[![Weekly global Tool Linting and Tests](https://github.com/galaxyproject/galaxy-tool-repository-template/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/galaxyproject/galaxy-tool-repository-template/actions/workflows/ci.yaml/badge.svg)
-
-# Galaxy tool repository template
-
-This is a template repository to create [IUC](https://github.com/galaxyproject/tools-iuc) style repositories.
-It offers:
-
-- the same structure as the IUC repository
-- CI for pull requests and weekly CI for all tools
-- automatic Tool Shed deployment of any updated tools, if the CI passes
-
-Some documentation of the structure and the use of the CI can be found in [here](TODO link to tutorial).
-
-Setup
-=====
-
-- Adapt the repository owner from `galaxyproject` to the owner of your repository [here](https://github.com/galaxyproject/galaxy-tool-repository-template/blob/main/.github/workflows/ci.yaml#L15), [here](https://github.com/galaxyproject/galaxy-tool-repository-template/blob/main/.github/workflows/pr.yaml#L316) and [here](https://github.com/galaxyproject/galaxy-tool-repository-template/blob/main/.github/workflows/slash.yaml#L10). This is needed to forbid running the CI workflows in forks.
-- Change the links for the badges in this document [here](https://github.com/galaxyproject/galaxy-tool-repository-template/blob/main/README.md?plain=1#L1) and [here](https://github.com/galaxyproject/galaxy-tool-repository-template/blob/main/README.md?plain=1#L2), i.e. chage the organisation and repository name in the links. Certainly you may want to add the other content of this document.
-- Add the API keys to the toolshed and testtoolshed as secrets with the name `TTS_API_KEY` and `TS_API_KEY` (for automated deployment).
-- Remove the example tool in `tools/example`
+[![Galaxy Tool Linting and Tests for push and PR](https://github.com/goeckslab/gleam/actions/workflows/pr.yaml/badge.svg?branch=main)](https://github.com/goeckslab/gleam/actions/workflows/pr.yaml/badge.svg)
 
 
-In order to use the `/run-all-tool-tests` slash command you need to add a secret `PAT` to your repo that allows the action to access
-you repository - see [here](https://docs.github.com/en/actions/reference/encrypted-secrets). The slash command allows to run trigger weekly CI running using a given fork and branch of the Galaxy project, e.g. `/run-all-tool-tests branch=release_24.0 fork=galaxyproject`.
+# GLEAM: Galaxy Learning and Modeling
 
-Also consider adding:
+GLEAM (Galaxy Learning and Modeling) is a suite of machine learning tools for the [Galaxy](https://galaxyproject.org/) platform. Developed by the [Goecks Lab](https://goeckslab.org/), GLEAM empowers researchers to train models, generate predictions, and produce reproducible reports—all from a user-friendly interface without writing code.
 
-- `CONTRIBUTING.md`
-- `.github/CODEOWNERS`
-- `.github/PULL_REQUEST_TEMPLATE.md`
+## Features
+- Machine learning support for diverse data types: tabular, image, text, categorical, and more
+- Deep learning via Ludwig and automated ML via PyCaret
+- Easy installation in Galaxy via XML wrappers
+- Reproducible and scalable workflows
+- Auto-generated visual reports
 
-Updates
-=======
+## Available Tools
 
-Only the CI workflows may require updates from time to time. You can manually copy the latest version from this repository to your repository (not changing the repository owner as indicated in the setup section). We suggest to do this at least once a year, ideally with every Galaxy release.
+### 1. TabularLearner
 
-Bug reports
-===========
+Machine learning for structured tabular datasets using [PyCaret](https://pycaret.org/).
 
-Please report problems with the CI workflows here: [IUC](https://github.com/galaxyproject/tools-iuc).
+- Train classification and regression models
+- Evaluate performance and extract feature importance
+- Generate predictions on new datasets
+- Create interactive HTML reports
+
+### 2. ImageLearner
+
+Deep learning-based image classification using [Ludwig](https://ludwig.ai/).
+
+- Train on labeled image datasets using pretrained or custom backbones
+- Support for train/validation/test split
+- Predict on test images and evaluate results
+- Generate visual reports with learning curves, confusion matrices, and examples
+
+### 3. Galaxy-Ludwig
+
+General-purpose interface to Ludwig's full machine learning capabilities.
+
+- Train and evaluate models on structured input (tabular, image, text, etc.)
+- Expose Ludwig’s flexible configuration system
+- Ideal for users needing advanced model customization
+
+A fourth toolset, Galaxy-Tiler, for large image preprocessing, is in development and will be included in future updates.
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/goeckslab/gleam.git
+   ```
+
+2. Add entries for each tool in your tool_conf.xml of your galaxy instance:
+    ```xml
+    <tool file="<path-to-your-local-tabularlearner/pycaret_train.xml>" />
+    <tool file="<path-to-your-local-imagelearner/image_learner_train.xml>" />
+    <tool file="<path-to-your-local-galaxy-ludwig/ludwig_train.xml>" />
+    ```
+
+
+## Contributing
+We welcome contributions. To propose new tools, report bugs, or suggest improvements:
+
+1. Fork the repository
+
+2. Create a feature branch
+
+3. Commit and test your changes
+
+4. Submit a pull request
+
+
