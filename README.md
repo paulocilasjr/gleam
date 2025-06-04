@@ -3,13 +3,14 @@
 
 # GLEAM: Galaxy Learning and Modeling
 
-GLEAM (Galaxy Learning and Modeling) is a suite of machine learning tools for the [Galaxy](https://galaxyproject.org/) platform. Developed by the [Goecks Lab](https://goeckslab.org/), GLEAM empowers researchers to train models, generate predictions, and produce reproducible reports—all from a user-friendly interface without writing code.
+GLEAM (Galaxy Learning and Modeling) is a suite of machine learning tools for the [Galaxy](https://usegalaxy.org/) platform. Developed by the [Goecks Lab](https://goeckslab.org/), GLEAM empowers researchers to train models, generate predictions, and produce reproducible reports—all from a user-friendly interface without writing code.
 
 ## Features
+- Modern best practices for machine learning
+- Reproducible and scalable workflows
 - Machine learning support for diverse data types: tabular, image, text, categorical, and more
 - Deep learning via Ludwig and automated ML via PyCaret
 - Easy installation in Galaxy via XML wrappers
-- Reproducible and scalable workflows
 - Auto-generated visual reports
 
 ## Available Tools
@@ -27,10 +28,10 @@ Machine learning for structured tabular datasets using [PyCaret](https://pycaret
 
 Deep learning-based image classification using [Ludwig](https://ludwig.ai/).
 
-- Train on labeled image datasets using pretrained or custom backbones
-- Support for train/validation/test split
-- Predict on test images and evaluate results
-- Generate visual reports with learning curves, confusion matrices, and examples
+- input files: Zip file with images  and csv with metadata
+- Tasks: classification
+- Models available: ResNet, EfficientNet, VGG, Shufflenet, Vit, AlexNet and More...
+- Output: Ludwig_model file, a report in the form of an HTML file (with learning curves, confusion matrices, and etc...), and a collection of CSV/json/png files containing the predictions, experiment stats and visualizations.
 
 ### 3. Galaxy-Ludwig
 
@@ -40,7 +41,13 @@ General-purpose interface to Ludwig's full machine learning capabilities.
 - Expose Ludwig’s flexible configuration system
 - Ideal for users needing advanced model customization
 
-A fourth toolset, Galaxy-Tiler, for large image preprocessing, is in development and will be included in future updates.
+### 4. Galaxy-Digital Pathology Processing
+
+Set of three specialized tools designed to transforms raw, large pathology images into a structured format, enabling the application of best practices for model development and ensuring data readiness for robust and efficient training.
+
+- Image Tiler: Accepts .svs image format, which is the most common proprietary format for digital pathology whole slide images.
+- Embedding Extractor: Leverages pre-trained models from the TorchVision foundation models for feature extraction (for example, ResNet50, EfficientNet_B0, DenseNet121).
+- Multiple Instance Learning (MIL) Bag Processor: Facilitates the aggregation of embeddings from individual image tiles into "bags" using various pooling techniques (such as Max Pooling or Attention Pooling).
 
 ## Installation
 
