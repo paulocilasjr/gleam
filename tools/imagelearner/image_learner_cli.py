@@ -251,7 +251,7 @@ def format_stats_table_html(training_stats: dict, test_stats: dict) -> str:
     return (
         "<h2 style='text-align: center;'>Model Performance Summary</h2>"
         "<div style='display: flex; justify-content: center;'>"
-        "<table style='border-collapse: collapse; width: 80%; table-layout: fixed;'>"
+        "<table style='border-collapse: collapse; width: 90%; table-layout: fixed;'>"
         "<colgroup>"
         "<col style='width: 40%;'>"
         "<col style='width: 20%;'>"
@@ -259,11 +259,21 @@ def format_stats_table_html(training_stats: dict, test_stats: dict) -> str:
         "<col style='width: 20%;'>"
         "</colgroup>"
         "<thead><tr>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: left;'>Metric</th>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Train</th>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Validation</th>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Test</th>"
-        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div><br>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Train</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Validation</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Test</th>"
+        "</tr></thead><tbody>" +
+        "".join(
+            "<tr>" +
+            "".join(
+                f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
+                for cell in row
+            ) +
+            "</tr>"
+            for row in rows
+        ) +
+        "</tbody></table></div><br>"
     )
 
 
@@ -304,7 +314,7 @@ def build_tabbed_html(
 </style>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('metrics')"> Config & Metrics</div>
+  <div class="tab active" onclick="showTab('metrics')"> Config & Results Summary</div>
   <div class="tab" onclick="showTab('trainval')"> Train/Validation Plots</div>
   <div class="tab" onclick="showTab('test')"> Test Plots</div>
 </div>
