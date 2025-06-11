@@ -10,6 +10,7 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Protocol, Tuple
 
+import numpy as np
 import pandas as pd
 import yaml
 from ludwig.globals import (
@@ -116,7 +117,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ImageLearner")
 
-
 def format_config_table_html(
         config: dict,
         split_info: Optional[str] = None,
@@ -213,42 +213,104 @@ def format_config_table_html(
         "</p><hr>"
     )
 
-
-def format_stats_table_html(training_stats: dict, test_stats: dict) -> str:
-    train_metrics = training_stats.get("training", {}).get("label", {})
-    val_metrics = training_stats.get("validation", {}).get("label", {})
-    test_metrics = test_stats.get("label", {})
-
-    all_metrics = set(train_metrics) | set(val_metrics) | set(test_metrics)
+def extract_metrics_from_json(train_stats: dict, test_stats: dict) -> Dict[str, Dict[str, float]]:
+    metrics = {"training": {}, "validation": {}, "test": {}}
 
     def get_last_value(stats, key):
         val = stats.get(key)
-        if isinstance(val, list) and val:
-            return val[-1]
-        elif isinstance(val, (int, float)):
-            return val
-        return None
+        return val[-1] if isinstance(val, list) and val else val if isinstance(val, (int, float)) else None
 
+    # Training and Validation
+    for split in ["training", "validation"]:
+        label_stats = train_stats.get(split, {}).get("label", {})
+        metrics[split] = {
+            "accuracy": get_last_value(label_stats, "accuracy"),
+            "accuracy_micro": get_last_value(label_stats, "accuracy_micro"),
+            "loss": get_last_value(label_stats, "loss"),
+            "roc_auc": get_last_value(label_stats, "roc_auc"),
+            "hits_at_k": get_last_value(label_stats, "hits_at_k"),
+        }
+
+    # Test
+    label_stats = test_stats.get("label", {})
+    overall_stats = label_stats.get("overall_stats", {})
+    per_class_stats = label_stats.get("per_class_stats", {})
+
+    metrics["test"] = {
+        "accuracy": label_stats.get("accuracy"),
+        "accuracy_micro": label_stats.get("accuracy_micro"),
+        "loss": label_stats.get("loss"),
+        "roc_auc": label_stats.get("roc_auc"),
+        "hits_at_k": label_stats.get("hits_at_k"),
+        "kappa_score": overall_stats.get("kappa_score"),
+        "token_accuracy": overall_stats.get("token_accuracy"),
+        "avg_precision_macro": overall_stats.get("avg_precision_macro"),
+        "avg_recall_macro": overall_stats.get("avg_recall_macro"),
+        "avg_f1_score_macro": overall_stats.get("avg_f1_score_macro"),
+        "avg_precision_micro": overall_stats.get("avg_precision_micro"),
+        "avg_recall_micro": overall_stats.get("avg_recall_micro"),
+        "avg_f1_score_micro": overall_stats.get("avg_f1_score_micro"),
+        "avg_precision_weighted": overall_stats.get("avg_precision_weighted"),
+        "avg_recall_weighted": overall_stats.get("avg_recall_weighted"),
+        "avg_f1_score_weighted": overall_stats.get("avg_f1_score_weighted"),
+    }
+
+    # Macro averaged specificity for test
+    if per_class_stats:
+        specificities = [stats.get("specificity") for stats in per_class_stats.values() if "specificity" in stats]
+        if specificities:
+            metrics["test"]["specificity"] = np.mean(specificities)
+
+    return metrics
+
+def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
+    # Extract metrics from JSON files
+    all_metrics = extract_metrics_from_json(train_stats, test_stats)
+
+    # Define display names
+    metric_display_names = {
+        "accuracy": "Accuracy (macro)",
+        "accuracy_micro": "Accuracy (micro)",
+        "avg_precision_macro": "Precision (macro)",
+        "avg_recall_macro": "Recall (macro)",
+        "avg_f1_score_macro": "F1-score (macro)",
+        "avg_precision_micro": "Precision (micro)",
+        "avg_recall_micro": "Recall (micro)",
+        "avg_f1_score_micro": "F1-score (micro)",
+        "avg_precision_weighted": "Precision (weighted)",
+        "avg_recall_weighted": "Recall (weighted)",
+        "avg_f1_score_weighted": "F1-score (weighted)",
+        "specificity": "Specificity (macro)",
+        "roc_auc": "AUC-ROC",
+        "loss": "Log Loss",
+        "hits_at_k": "Hits@K",
+        "kappa_score": "Cohen's Kappa",
+        "token_accuracy": "Token Accuracy",
+    }
+
+    # Collect all metric keys
+    all_metric_keys = set()
+    for split_metrics in all_metrics.values():
+        all_metric_keys.update(split_metrics.keys())
+
+    # Filter metrics available for all splits
+    common_metrics = [key for key in all_metric_keys if all(key in split_metrics for split_metrics in all_metrics.values())]
+
+    # Prepare table rows
     rows = []
-    for metric in sorted(all_metrics):
-        t = get_last_value(train_metrics, metric)
-        v = get_last_value(val_metrics, metric)
-        te = get_last_value(test_metrics, metric)
+    for metric_key in sorted(common_metrics):
+        display_name = metric_display_names.get(metric_key, metric_key.replace('_', ' ').title())
+        t = all_metrics["training"].get(metric_key)
+        v = all_metrics["validation"].get(metric_key)
+        te = all_metrics["test"].get(metric_key)
         if all(x is not None for x in [t, v, te]):
-            row = (
-                f"<tr>"
-                f"<td style='padding: 6px 12px; border: 1px solid #ccc; text-align: left;'>{metric}</td>"
-                f"<td style='padding: 6px 12px; border: 1px solid #ccc; text-align: center;'>{t:.4f}</td>"
-                f"<td style='padding: 6px 12px; border: 1px solid #ccc; text-align: center;'>{v:.4f}</td>"
-                f"<td style='padding: 6px 12px; border: 1px solid #ccc; text-align: center;'>{te:.4f}</td>"
-                f"</tr>"
-            )
-            rows.append(row)
+            rows.append([display_name, f"{t:.4f}", f"{v:.4f}", f"{te:.4f}"])
 
     if not rows:
         return "<p><em>No metric values found.</em></p>"
 
-    return (
+    # Generate HTML table
+    html = (
         "<h2 style='text-align: center;'>Model Performance Summary</h2>"
         "<div style='display: flex; justify-content: center;'>"
         "<table style='border-collapse: collapse; width: 90%; table-layout: fixed;'>"
@@ -263,19 +325,63 @@ def format_stats_table_html(training_stats: dict, test_stats: dict) -> str:
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Train</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Validation</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Test</th>"
-        "</tr></thead><tbody>" +
-        "".join(
-            "<tr>" +
-            "".join(
-                f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
-                for cell in row
-            ) +
-            "</tr>"
-            for row in rows
-        ) +
+        "</tr></thead><tbody>"
+    )
+    for row in rows:
+        html += "<tr>"
+        for cell in row:
+            html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
+        html += "</tr>"
+    html += "</tbody></table></div><br>"
+
+    return html
+
+def format_test_specific_stats_table_html(test_metrics: Dict[str, float], common_metrics: list) -> str:
+    test_specific_keys = [k for k in test_metrics.keys() if k not in common_metrics]
+    rows = []
+    metric_display_names = {
+        "accuracy": "Accuracy (macro)",
+        "accuracy_micro": "Accuracy (micro)",
+        "avg_precision_macro": "Precision (macro)",
+        "avg_recall_macro": "Recall (macro)",
+        "avg_f1_score_macro": "F1-score (macro)",
+        "avg_precision_micro": "Precision (micro)",
+        "avg_recall_micro": "Recall (micro)",
+        "avg_f1_score_micro": "F1-score (micro)",
+        "avg_precision_weighted": "Precision (weighted)",
+        "avg_recall_weighted": "Recall (weighted)",
+        "avg_f1_score_weighted": "F1-score (weighted)",
+        "specificity": "Specificity (macro)",
+        "roc_auc": "AUC-ROC",
+        "loss": "Log Loss",
+        "hits_at_k": "Hits@K",
+        "kappa_score": "Cohen's Kappa",
+        "token_accuracy": "Token Accuracy",
+    }
+    for key in sorted(test_specific_keys):
+        display_name = metric_display_names.get(key, key.replace('_', ' ').title())
+        value = test_metrics[key]
+        rows.append(f"<tr><td>{display_name}</td><td>{value:.4f}</td></tr>")
+
+    if not rows:
+        return ""
+
+    html = (
+        "<h2 style='text-align: center;'>Test-Specific Metrics</h2>"
+        "<div style='display: flex; justify-content: center;'>"
+        "<table style='border-collapse: collapse; width: 60%; table-layout: fixed;'>"
+        "<colgroup>"
+        "<col style='width: 60%;'>"
+        "<col style='width: 40%;'>"
+        "</colgroup>"
+        "<thead><tr>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Value</th>"
+        "</tr></thead><tbody>"
+        + "".join(rows) +
         "</tbody></table></div><br>"
     )
-
+    return html
 
 def build_tabbed_html(
         metrics_html: str,
@@ -339,7 +445,6 @@ function showTab(id) {{
 </script>
 """
 
-
 def split_data_0_2(
     df: pd.DataFrame,
     split_column: str,
@@ -347,13 +452,7 @@ def split_data_0_2(
     random_state: int = 42,
     label_column: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
-    Given a DataFrame whose split_column only contains {0,2}, re-assign
-    a portion of the 0s to become 1s (validation). Returns a fresh DataFrame.
-    """
-    # Work on a copy
     out = df.copy()
-    # Ensure split col is integer dtype
     out[split_column] = pd.to_numeric(out[split_column], errors="coerce").astype(int)
 
     idx_train = out.index[out[split_column] == 0].tolist()
@@ -362,17 +461,14 @@ def split_data_0_2(
         logger.info("No rows with split=0; nothing to do.")
         return out
 
-    # Determine stratify array if possible
     stratify_arr = None
     if label_column and label_column in out.columns:
-        # Only stratify if at least two classes and enough samples
         label_counts = out.loc[idx_train, label_column].value_counts()
         if label_counts.size > 1 and (label_counts.min() * validation_size) >= 1:
             stratify_arr = out.loc[idx_train, label_column]
         else:
             logger.warning("Cannot stratify (too few labels); splitting without stratify.")
 
-    # Edge cases
     if validation_size <= 0:
         logger.info("validation_size <= 0; keeping all as train.")
         return out
@@ -381,7 +477,6 @@ def split_data_0_2(
         out.loc[idx_train, split_column] = 1
         return out
 
-    # Do the split
     try:
         train_idx, val_idx = train_test_split(
             idx_train,
@@ -398,19 +493,12 @@ def split_data_0_2(
             stratify=None
         )
 
-    # Assign new splits
     out.loc[train_idx, split_column] = 0
     out.loc[val_idx, split_column] = 1
-    # idx_test stays at 2
-
-    # Cast back to a clean integer type
     out[split_column] = out[split_column].astype(int)
-    # print(out)
     return out
 
-
 class Backend(Protocol):
-    """Interface for a machine learning backend."""
     def prepare_config(
         self,
         config_params: Dict[str, Any],
@@ -440,20 +528,12 @@ class Backend(Protocol):
     ) -> Path:
         ...
 
-
 class LudwigDirectBackend:
-    """
-    Backend for running Ludwig experiments directly via the internal experiment_cli function.
-    """
-
     def prepare_config(
         self,
         config_params: Dict[str, Any],
         split_config: Dict[str, Any],
     ) -> str:
-        """
-        Build and serialize the Ludwig YAML configuration.
-        """
         logger.info("LudwigDirectBackend: Preparing YAML configuration.")
 
         model_name = config_params.get("model_name", "resnet18")
@@ -471,7 +551,6 @@ class LudwigDirectBackend:
             logger.warning("Setting trainable=True to train the model from scratch.")
             trainable = True
 
-        # Encoder setup
         raw_encoder = MODEL_ENCODER_TEMPLATES.get(model_name, model_name)
         if isinstance(raw_encoder, dict):
             encoder_config = {
@@ -482,8 +561,6 @@ class LudwigDirectBackend:
         else:
             encoder_config = {"type": raw_encoder}
 
-        # Trainer & optimizer
-        # optimizer = {"type": "adam", "learning_rate": 5e-5} if fine_tune else {"type": "adam"}
         batch_size_cfg = batch_size or "auto"
 
         conf: Dict[str, Any] = {
@@ -528,9 +605,6 @@ class LudwigDirectBackend:
         output_dir: Path,
         random_seed: int = 42,
     ) -> None:
-        """
-        Invoke Ludwig's internal experiment_cli function to run the experiment.
-        """
         logger.info("LudwigDirectBackend: Starting experiment execution.")
 
         try:
@@ -566,11 +640,6 @@ class LudwigDirectBackend:
             raise
 
     def get_training_process(self, output_dir) -> float:
-        """
-        Retrieve the learning rate used in the most recent Ludwig run.
-        Returns:
-            float: learning rate (or None if not found)
-        """
         output_dir = Path(output_dir)
         exp_dirs = sorted(
             output_dir.glob("experiment_run*"),
@@ -595,11 +664,10 @@ class LudwigDirectBackend:
                 "epoch": data.get("epoch"),
             }
         except Exception as e:
-            self.logger.warning(f"Failed to read training progress info: {e}")
+            logger.warning(f"Failed to read training progress info: {e}")
             return {}
 
     def convert_parquet_to_csv(self, output_dir: Path):
-        """Convert the predictions Parquet file to CSV."""
         output_dir = Path(output_dir)
         exp_dirs = sorted(
             output_dir.glob("experiment_run*"),
@@ -619,9 +687,6 @@ class LudwigDirectBackend:
             logger.error(f"Error converting Parquet to CSV: {e}")
 
     def generate_plots(self, output_dir: Path) -> None:
-        """
-        Generate _all_ registered Ludwig visualizations for the latest experiment run.
-        """
         logger.info("Generating all Ludwig visualizations…")
 
         test_plots = {
@@ -648,7 +713,6 @@ class LudwigDirectBackend:
             'compare_classifiers_performance_subset',
         }
 
-        # 1) find the most recent experiment directory
         output_dir = Path(output_dir)
         exp_dirs = sorted(
             output_dir.glob("experiment_run*"),
@@ -659,7 +723,6 @@ class LudwigDirectBackend:
             return
         exp_dir = exp_dirs[-1]
 
-        # 2) ensure viz output subfolder exists
         viz_dir = exp_dir / "visualizations"
         viz_dir.mkdir(exist_ok=True)
         train_viz = viz_dir / "train"
@@ -667,17 +730,14 @@ class LudwigDirectBackend:
         train_viz.mkdir(parents=True, exist_ok=True)
         test_viz.mkdir(parents=True, exist_ok=True)
 
-        # 3) helper to check file existence
         def _check(p: Path) -> Optional[str]:
             return str(p) if p.exists() else None
 
-        # 4) gather standard Ludwig output files
         training_stats = _check(exp_dir / "training_statistics.json")
         test_stats = _check(exp_dir / TEST_STATISTICS_FILE_NAME)
         probs_path = _check(exp_dir / PREDICTIONS_PARQUET_FILE_NAME)
         gt_metadata = _check(exp_dir / "model" / TRAIN_SET_METADATA_FILE_NAME)
 
-        # 5) try to read original dataset & split file from description.json
         dataset_path = None
         split_file = None
         desc = exp_dir / DESCRIPTION_FILE_NAME
@@ -687,7 +747,6 @@ class LudwigDirectBackend:
             dataset_path = _check(Path(cfg.get("dataset", "")))
             split_file = _check(Path(get_split_path(cfg.get("dataset", ""))))
 
-        # 6) infer output feature name
         output_feature = ""
         if desc.exists():
             try:
@@ -699,7 +758,6 @@ class LudwigDirectBackend:
                 stats = json.load(f)
             output_feature = next(iter(stats.keys()), "")
 
-        # 7) loop through every registered viz
         viz_registry = get_visualizations_registry()
         for viz_name, viz_func in viz_registry.items():
             viz_dir_plot = None
@@ -736,15 +794,11 @@ class LudwigDirectBackend:
             output_dir: str,
             config: dict,
             split_info: str) -> Path:
-        """
-        Assemble an HTML report from visualizations under train_val/ and test/ folders.
-        """
         cwd = Path.cwd()
         report_name = title.lower().replace(" ", "_") + "_report.html"
         report_path = cwd / report_name
         output_dir = Path(output_dir)
 
-        # Find latest experiment dir
         exp_dirs = sorted(output_dir.glob("experiment_run*"), key=lambda p: p.stat().st_mtime)
         if not exp_dirs:
             raise RuntimeError(f"No 'experiment*' dirs found in {output_dir}")
@@ -759,7 +813,6 @@ class LudwigDirectBackend:
 
         metrics_html = ""
 
-        # Load and embed metrics table (training/val/test stats)
         try:
             train_stats_path = exp_dir / "training_statistics.json"
             test_stats_path = exp_dir / TEST_STATISTICS_FILE_NAME
@@ -770,7 +823,16 @@ class LudwigDirectBackend:
                     test_stats = json.load(f)
                 output_feature = next(iter(train_stats.keys()), "")
                 if output_feature:
-                    metrics_html += format_stats_table_html(train_stats, test_stats)
+                    all_metrics = extract_metrics_from_json(train_stats, test_stats)
+                    common_metrics = [
+                        key for key in all_metrics["training"].keys()
+                        if key in all_metrics["validation"] and key in all_metrics["test"]
+                    ]
+                    common_metrics_html = format_stats_table_html(train_stats, test_stats)
+                    test_specific_html = format_test_specific_stats_table_html(
+                        all_metrics["test"], common_metrics
+                    )
+                    metrics_html = common_metrics_html + test_specific_html
         except Exception as e:
             logger.warning(f"Could not load stats for HTML report: {e}")
 
@@ -816,18 +878,7 @@ class LudwigDirectBackend:
 
         return report_path
 
-
 class WorkflowOrchestrator:
-    """
-    Manages the image-classification workflow:
-      1. Creates temp dirs
-      2. Extracts images
-      3. Prepares data (CSV + splits)
-      4. Renders a backend config
-      5. Runs the experiment
-      6. Cleans up
-    """
-
     def __init__(self, args: argparse.Namespace, backend: Backend):
         self.args = args
         self.backend = backend
@@ -836,7 +887,6 @@ class WorkflowOrchestrator:
         logger.info(f"Orchestrator initialized with backend: {type(backend).__name__}")
 
     def _create_temp_dirs(self) -> None:
-        """Create temporary output and image extraction directories."""
         try:
             self.temp_dir = Path(tempfile.mkdtemp(
                 dir=self.args.output_dir,
@@ -850,7 +900,6 @@ class WorkflowOrchestrator:
             raise
 
     def _extract_images(self) -> None:
-        """Extract images from ZIP into the temp image directory."""
         if self.image_extract_dir is None:
             raise RuntimeError("Temp image directory not initialized.")
         logger.info(f"Extracting images from {self.args.image_zip} → {self.image_extract_dir}")
@@ -863,16 +912,9 @@ class WorkflowOrchestrator:
             raise
 
     def _prepare_data(self) -> Tuple[Path, Dict[str, Any]]:
-        """
-        Load CSV, update image paths, handle splits, and write prepared CSV.
-        Returns:
-            final_csv_path: Path to the prepared CSV
-            split_config: Dict for backend split settings
-        """
         if not self.temp_dir or not self.image_extract_dir:
             raise RuntimeError("Temp dirs not initialized before data prep.")
 
-        # 1) Load
         try:
             df = pd.read_csv(self.args.csv_file)
             logger.info(f"Loaded CSV: {self.args.csv_file}")
@@ -880,13 +922,11 @@ class WorkflowOrchestrator:
             logger.error("Error loading CSV file", exc_info=True)
             raise
 
-        # 2) Validate columns
         required = {IMAGE_PATH_COLUMN_NAME, LABEL_COLUMN_NAME}
         missing = required - set(df.columns)
         if missing:
             raise ValueError(f"Missing CSV columns: {', '.join(missing)}")
 
-        # 3) Update image paths
         try:
             df[IMAGE_PATH_COLUMN_NAME] = df[IMAGE_PATH_COLUMN_NAME].apply(
                 lambda p: str((self.image_extract_dir / p).resolve())
@@ -895,7 +935,6 @@ class WorkflowOrchestrator:
             logger.error("Error updating image paths", exc_info=True)
             raise
 
-        # 4) Handle splits
         if SPLIT_COLUMN_NAME in df.columns:
             df, split_config, split_info = self._process_fixed_split(df)
         else:
@@ -909,7 +948,6 @@ class WorkflowOrchestrator:
                 f"{[int(p*100) for p in self.args.split_probabilities]}% for train/val/test."
             )
 
-        # 5) Write out prepared CSV
         final_csv = TEMP_CSV_FILENAME
         try:
             df.to_csv(final_csv, index=False)
@@ -921,7 +959,6 @@ class WorkflowOrchestrator:
         return final_csv, split_config, split_info
 
     def _process_fixed_split(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Process a fixed split column (0=train,1=val,2=test)."""
         logger.info(f"Fixed split column '{SPLIT_COLUMN_NAME}' detected.")
         try:
             col = df[SPLIT_COLUMN_NAME]
@@ -945,7 +982,6 @@ class WorkflowOrchestrator:
                     f"reassigned {self.args.validation_size * 100:.1f}% "
                     "of the training set (originally labeled 0) to validation (labeled 1)."
                 )
-
                 logger.info("Applied custom 0/2 split.")
             elif unique.issubset({0, 1, 2}):
                 split_info = "Used user-defined split column from CSV."
@@ -954,13 +990,11 @@ class WorkflowOrchestrator:
                 raise ValueError(f"Unexpected split values: {unique}")
 
             return df, {"type": "fixed", "column": SPLIT_COLUMN_NAME}, split_info
-
         except Exception:
             logger.error("Error processing fixed split", exc_info=True)
             raise
 
     def _cleanup_temp_dirs(self) -> None:
-        """Remove any temporary directories."""
         if self.temp_dir and self.temp_dir.exists():
             logger.info(f"Cleaning up temp directory: {self.temp_dir}")
             shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -968,7 +1002,6 @@ class WorkflowOrchestrator:
         self.image_extract_dir = None
 
     def run(self) -> None:
-        """Execute the full workflow end-to-end."""
         logger.info("Starting workflow...")
         self.args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1017,10 +1050,8 @@ class WorkflowOrchestrator:
         except Exception:
             logger.error("Workflow execution failed", exc_info=True)
             raise
-
         finally:
             self._cleanup_temp_dirs()
-
 
 def parse_learning_rate(s):
     try:
@@ -1028,10 +1059,8 @@ def parse_learning_rate(s):
     except (TypeError, ValueError):
         return None
 
-
 class SplitProbAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        # values is a list of three floats
         train, val, test = values
         total = train + val + test
         if abs(total - 1.0) > 1e-6:
@@ -1041,9 +1070,7 @@ class SplitProbAction(argparse.Action):
             )
         setattr(namespace, self.dest, values)
 
-
 def main():
-
     parser = argparse.ArgumentParser(
         description="Image Classification Learner with Pluggable Backends"
     )
