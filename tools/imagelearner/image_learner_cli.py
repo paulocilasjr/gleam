@@ -264,52 +264,27 @@ def extract_metrics_from_json(train_stats: dict, test_stats: dict) -> Dict[str, 
     return metrics
 
 def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
-    # Extract metrics from JSON files
     all_metrics = extract_metrics_from_json(train_stats, test_stats)
-
-    # Define display names
     metric_display_names = {
         "accuracy": "Accuracy (macro)",
         "accuracy_micro": "Accuracy (micro)",
-        "avg_precision_macro": "Precision (macro)",
-        "avg_recall_macro": "Recall (macro)",
-        "avg_f1_score_macro": "F1-score (macro)",
-        "avg_precision_micro": "Precision (micro)",
-        "avg_recall_micro": "Recall (micro)",
-        "avg_f1_score_micro": "F1-score (micro)",
-        "avg_precision_weighted": "Precision (weighted)",
-        "avg_recall_weighted": "Recall (weighted)",
-        "avg_f1_score_weighted": "F1-score (weighted)",
-        "specificity": "Specificity (macro)",
+        "loss": "Loss",
         "roc_auc": "AUC-ROC",
-        "loss": "Log Loss",
-        "hits_at_k": "Hits@K",
-        "kappa_score": "Cohen's Kappa",
-        "token_accuracy": "Token Accuracy",
+        "hits_at_k": "Hits at K",
     }
-
-    # Collect all metric keys
-    all_metric_keys = set()
-    for split_metrics in all_metrics.values():
-        all_metric_keys.update(split_metrics.keys())
-
-    # Filter metrics available for all splits
-    common_metrics = [key for key in all_metric_keys if all(key in split_metrics for split_metrics in all_metrics.values())]
-
-    # Prepare table rows
     rows = []
-    for metric_key in sorted(common_metrics):
-        display_name = metric_display_names.get(metric_key, metric_key.replace('_', ' ').title())
-        t = all_metrics["training"].get(metric_key)
-        v = all_metrics["validation"].get(metric_key)
-        te = all_metrics["test"].get(metric_key)
-        if all(x is not None for x in [t, v, te]):
-            rows.append([display_name, f"{t:.4f}", f"{v:.4f}", f"{te:.4f}"])
+    for metric_key in sorted(all_metrics["training"].keys()):
+        if metric_key in all_metrics["validation"] and metric_key in all_metrics["test"]:
+            display_name = metric_display_names.get(metric_key, metric_key.replace('_', ' ').title())
+            t = all_metrics["training"].get(metric_key)
+            v = all_metrics["validation"].get(metric_key)
+            te = all_metrics["test"].get(metric_key)
+            if all(x is not None for x in [t, v, te]):
+                rows.append([display_name, f"{t:.4f}", f"{v:.4f}", f"{te:.4f}"])
 
     if not rows:
         return "<p><em>No metric values found.</em></p>"
 
-    # Generate HTML table
     html = (
         "<h2 style='text-align: center;'>Model Performance Summary</h2>"
         "<div style='display: flex; justify-content: center;'>"
@@ -333,15 +308,61 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
             html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
         html += "</tr>"
     html += "</tbody></table></div><br>"
-
     return html
 
-def format_test_specific_stats_table_html(test_metrics: Dict[str, float], common_metrics: list) -> str:
-    test_specific_keys = [k for k in test_metrics.keys() if k not in common_metrics]
-    rows = []
+def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> str:
+    all_metrics = extract_metrics_from_json(train_stats, test_stats)
     metric_display_names = {
         "accuracy": "Accuracy (macro)",
         "accuracy_micro": "Accuracy (micro)",
+        "loss": "Loss",
+        "roc_auc": "AUC-ROC",
+        "hits_at_k": "Hits at K",
+    }
+    rows = []
+    for metric_key in sorted(all_metrics["training"].keys()):
+        if metric_key in all_metrics["validation"]:
+            display_name = metric_display_names.get(metric_key, metric_key.replace('_', ' ').title())
+            t = all_metrics["training"].get(metric_key)
+            v = all_metrics["validation"].get(metric_key)
+            if t is not None and v is not None:
+                rows.append([display_name, f"{t:.4f}", f"{v:.4f}"])
+
+    if not rows:
+        return "<p><em>No metric values found for Train/Validation.</em></p>"
+
+    html = (
+        "<h2 style='text-align: center;'>Train/Validation Performance Summary</h2>"
+        "<div style='display: flex; justify-content: center;'>"
+        "<table style='border-collapse: collapse; width: 60%; table-layout: fixed;'>"
+        "<colgroup>"
+        "<col style='width: 40%;'>"
+        "<col style='width: 30%;'>"
+        "<col style='width: 30%;'>"
+        "</colgroup>"
+        "<thead><tr>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Train</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Validation</th>"
+        "</tr></thead><tbody>"
+    )
+    for row in rows:
+        html += "<tr>"
+        for cell in row:
+            html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
+        html += "</tr>"
+    html += "</tbody></table></div><br>"
+    return html
+
+def format_test_merged_stats_table_html(test_metrics: Dict[str, float]) -> str:
+    metric_display_names = {
+        "accuracy": "Accuracy (macro)",
+        "accuracy_micro": "Accuracy (micro)",
+        "loss": "Loss",
+        "roc_auc": "AUC-ROC",
+        "hits_at_k": "Hits at K",
+        "kappa_score": "Cohen's Kappa",
+        "token_accuracy": "Token Accuracy",
         "avg_precision_macro": "Precision (macro)",
         "avg_recall_macro": "Recall (macro)",
         "avg_f1_score_macro": "F1-score (macro)",
@@ -352,22 +373,19 @@ def format_test_specific_stats_table_html(test_metrics: Dict[str, float], common
         "avg_recall_weighted": "Recall (weighted)",
         "avg_f1_score_weighted": "F1-score (weighted)",
         "specificity": "Specificity (macro)",
-        "roc_auc": "AUC-ROC",
-        "loss": "Log Loss",
-        "hits_at_k": "Hits@K",
-        "kappa_score": "Cohen's Kappa",
-        "token_accuracy": "Token Accuracy",
     }
-    for key in sorted(test_specific_keys):
+    rows = []
+    for key in sorted(test_metrics.keys()):
         display_name = metric_display_names.get(key, key.replace('_', ' ').title())
         value = test_metrics[key]
-        rows.append(f"<tr><td>{display_name}</td><td>{value:.4f}</td></tr>")
+        if value is not None:
+            rows.append(f"<tr><td>{display_name}</td><td>{value:.4f}</td></tr>")
 
     if not rows:
-        return ""
+        return "<p><em>No test metric values found.</em></p>"
 
     html = (
-        "<h2 style='text-align: center;'>Test-Specific Metrics</h2>"
+        "<h2 style='text-align: center;'>Test Performance Summary</h2>"
         "<div style='display: flex; justify-content: center;'>"
         "<table style='border-collapse: collapse; width: 60%; table-layout: fixed;'>"
         "<colgroup>"
@@ -376,7 +394,7 @@ def format_test_specific_stats_table_html(test_metrics: Dict[str, float], common
         "</colgroup>"
         "<thead><tr>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Value</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Test</th>"
         "</tr></thead><tbody>"
         + "".join(rows) +
         "</tbody></table></div><br>"
@@ -385,8 +403,8 @@ def format_test_specific_stats_table_html(test_metrics: Dict[str, float], common
 
 def build_tabbed_html(
         metrics_html: str,
-        train_viz_html: str,
-        test_viz_html: str) -> str:
+        train_val_html: str,
+        test_html: str) -> str:
     return f"""
 <style>
 .tabs {{
@@ -421,18 +439,18 @@ def build_tabbed_html(
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('metrics')"> Config & Results Summary</div>
-  <div class="tab" onclick="showTab('trainval')"> Train/Validation Plots</div>
-  <div class="tab" onclick="showTab('test')"> Test Plots</div>
+  <div class="tab" onclick="showTab('trainval')"> Train/Validation Results</div>
+  <div class="tab" onclick="showTab('test')"> Test Results</div>
 </div>
 
 <div id="metrics" class="tab-content active">
   {metrics_html}
 </div>
 <div id="trainval" class="tab-content">
-  {train_viz_html}
+  {train_val_html}
 </div>
 <div id="test" class="tab-content">
-  {test_viz_html}
+  {test_html}
 </div>
 
 <script>
@@ -812,6 +830,8 @@ class LudwigDirectBackend:
         html += f"<h1>{title}</h1>"
 
         metrics_html = ""
+        train_val_metrics_html = ""
+        test_metrics_html = ""
 
         try:
             train_stats_path = exp_dir / "training_statistics.json"
@@ -824,15 +844,9 @@ class LudwigDirectBackend:
                 output_feature = next(iter(train_stats.keys()), "")
                 if output_feature:
                     all_metrics = extract_metrics_from_json(train_stats, test_stats)
-                    common_metrics = [
-                        key for key in all_metrics["training"].keys()
-                        if key in all_metrics["validation"] and key in all_metrics["test"]
-                    ]
-                    common_metrics_html = format_stats_table_html(train_stats, test_stats)
-                    test_specific_html = format_test_specific_stats_table_html(
-                        all_metrics["test"], common_metrics
-                    )
-                    metrics_html = common_metrics_html + test_specific_html
+                    metrics_html = format_stats_table_html(train_stats, test_stats)
+                    train_val_metrics_html = format_train_val_stats_table_html(train_stats, test_stats)
+                    test_metrics_html = format_test_merged_stats_table_html(all_metrics["test"])
         except Exception as e:
             logger.warning(f"Could not load stats for HTML report: {e}")
 
@@ -863,8 +877,8 @@ class LudwigDirectBackend:
             section_html += "</div>"
             return section_html
 
-        train_plots_html = render_img_section("Training & Validation Visualizations", train_viz_dir)
-        test_plots_html = render_img_section("Test Visualizations", test_viz_dir)
+        train_plots_html = train_val_metrics_html + render_img_section("Training & Validation Visualizations", train_viz_dir)
+        test_plots_html = test_metrics_html + render_img_section("Test Visualizations", test_viz_dir)
         html += build_tabbed_html(config_html + metrics_html, train_plots_html, test_plots_html)
         html += get_html_closing()
 
@@ -1147,7 +1161,6 @@ def main():
         parser.error(f"ZIP not found: {args.image_zip}")
 
     # --- Instantiate Backend and Orchestrator ---
-    # Use the new LudwigDirectBackend
     backend_instance = LudwigDirectBackend()
     orchestrator = WorkflowOrchestrator(args, backend_instance)
 
