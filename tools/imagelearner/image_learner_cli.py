@@ -263,11 +263,12 @@ def extract_metrics_from_json(train_stats: dict, test_stats: dict) -> Dict[str, 
 
     return metrics
 
+
 def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
     all_metrics = extract_metrics_from_json(train_stats, test_stats)
     metric_display_names = {
-        "accuracy": "Accuracy (macro)",
-        "accuracy_micro": "Accuracy (micro)",
+        "accuracy": "Average Class Accuracy",
+        "accuracy_micro": "Overall Accuracy",
         "loss": "Loss",
         "roc_auc": "AUC-ROC",
         "hits_at_k": "Hits at K",
@@ -288,13 +289,7 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
     html = (
         "<h2 style='text-align: center;'>Model Performance Summary</h2>"
         "<div style='display: flex; justify-content: center;'>"
-        "<table style='border-collapse: collapse; width: 90%; table-layout: fixed;'>"
-        "<colgroup>"
-        "<col style='width: 40%;'>"
-        "<col style='width: 20%;'>"
-        "<col style='width: 20%;'>"
-        "<col style='width: 20%;'>"
-        "</colgroup>"
+        "<table style='border-collapse: collapse; table-layout: auto;'>"
         "<thead><tr>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Train</th>"
@@ -304,7 +299,8 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
     )
     for row in rows:
         html += "<tr>"
-        for cell in row:
+        html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>{row[0]}</td>"
+        for cell in row[1:]:
             html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
         html += "</tr>"
     html += "</tbody></table></div><br>"
@@ -313,8 +309,8 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
 def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> str:
     all_metrics = extract_metrics_from_json(train_stats, test_stats)
     metric_display_names = {
-        "accuracy": "Accuracy (macro)",
-        "accuracy_micro": "Accuracy (micro)",
+        "accuracy": "Average Class Accuracy",
+        "accuracy_micro": "Overall Accuracy",
         "loss": "Loss",
         "roc_auc": "AUC-ROC",
         "hits_at_k": "Hits at K",
@@ -334,12 +330,7 @@ def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> st
     html = (
         "<h2 style='text-align: center;'>Train/Validation Performance Summary</h2>"
         "<div style='display: flex; justify-content: center;'>"
-        "<table style='border-collapse: collapse; width: 60%; table-layout: fixed;'>"
-        "<colgroup>"
-        "<col style='width: 40%;'>"
-        "<col style='width: 30%;'>"
-        "<col style='width: 30%;'>"
-        "</colgroup>"
+        "<table style='border-collapse: collapse; table-layout: auto;'>"
         "<thead><tr>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Train</th>"
@@ -348,7 +339,8 @@ def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> st
     )
     for row in rows:
         html += "<tr>"
-        for cell in row:
+        html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>{row[0]}</td>"
+        for cell in row[1:]:
             html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
         html += "</tr>"
     html += "</tbody></table></div><br>"
@@ -356,8 +348,8 @@ def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> st
 
 def format_test_merged_stats_table_html(test_metrics: Dict[str, float]) -> str:
     metric_display_names = {
-        "accuracy": "Accuracy (macro)",
-        "accuracy_micro": "Accuracy (micro)",
+        "accuracy": "Average Class Accuracy",
+        "accuracy_micro": "Overall Accuracy",
         "loss": "Loss",
         "roc_auc": "AUC-ROC",
         "hits_at_k": "Hits at K",
@@ -379,7 +371,10 @@ def format_test_merged_stats_table_html(test_metrics: Dict[str, float]) -> str:
         display_name = metric_display_names.get(key, key.replace('_', ' ').title())
         value = test_metrics[key]
         if value is not None:
-            rows.append(f"<tr><td>{display_name}</td><td>{value:.4f}</td></tr>")
+            rows.append(
+                f"<tr><td style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>{display_name}</td>"
+                f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{value:.4f}</td></tr>"
+            )
 
     if not rows:
         return "<p><em>No test metric values found.</em></p>"
@@ -387,11 +382,7 @@ def format_test_merged_stats_table_html(test_metrics: Dict[str, float]) -> str:
     html = (
         "<h2 style='text-align: center;'>Test Performance Summary</h2>"
         "<div style='display: flex; justify-content: center;'>"
-        "<table style='border-collapse: collapse; width: 60%; table-layout: fixed;'>"
-        "<colgroup>"
-        "<col style='width: 60%;'>"
-        "<col style='width: 40%;'>"
-        "</colgroup>"
+        "<table style='border-collapse: collapse; table-layout: auto;'>"
         "<thead><tr>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Test</th>"
@@ -400,6 +391,7 @@ def format_test_merged_stats_table_html(test_metrics: Dict[str, float]) -> str:
         "</tbody></table></div><br>"
     )
     return html
+
 
 def build_tabbed_html(
         metrics_html: str,
@@ -463,6 +455,9 @@ function showTab(id) {{
 </script>
 """
 
+
+
+
 def split_data_0_2(
     df: pd.DataFrame,
     split_column: str,
@@ -516,6 +511,7 @@ def split_data_0_2(
     out[split_column] = out[split_column].astype(int)
     return out
 
+
 class Backend(Protocol):
     def prepare_config(
         self,
@@ -545,6 +541,7 @@ class Backend(Protocol):
         output_dir: str
     ) -> Path:
         ...
+
 
 class LudwigDirectBackend:
     def prepare_config(
@@ -591,7 +588,7 @@ class LudwigDirectBackend:
                 }
             ],
             "output_features": [
-                {"name": LABEL_COLUMN_NAME, "type": "category"}
+                {"name": LABEL_COLUMN_NAME, "type": "binary"}
             ],
             "combiner": {"type": "concat"},
             "trainer": {
@@ -860,9 +857,30 @@ class LudwigDirectBackend:
         def render_img_section(title: str, dir_path: Path) -> str:
             if not dir_path.exists():
                 return f"<h2>{title}</h2><p><em>Directory not found.</em></p>"
-            imgs = sorted(dir_path.glob("*.png"))
+
+            # Get all PNG images
+            imgs = list(dir_path.glob("*.png"))
             if not imgs:
                 return f"<h2>{title}</h2><p><em>No plots found.</em></p>"
+
+            # Prioritize images for the Test Visualizations section
+            if title == "Test Visualizations":
+                prioritized = []
+                remaining = []
+                for img in imgs:
+                    if img.name == "confusion_matrix__label_top10.png":
+                        prioritized.append((0, img))
+                    elif img.name == "roc_curves.png":
+                        prioritized.append((1, img))
+                    else:
+                        remaining.append(img)
+                # Sort remaining images alphabetically
+                remaining.sort()
+                # Combine prioritized and remaining, with prioritized sorted by their assigned order
+                imgs = [img for _, img in sorted(prioritized)] + remaining
+            else:
+                # For non-test sections (e.g., Training & Validation), keep alphabetical order
+                imgs = sorted(imgs)
 
             section_html = f"<h2 style='text-align: center;'>{title}</h2><div>"
             for img in imgs:
@@ -891,6 +909,7 @@ class LudwigDirectBackend:
             raise
 
         return report_path
+
 
 class WorkflowOrchestrator:
     def __init__(self, args: argparse.Namespace, backend: Backend):
@@ -1067,11 +1086,13 @@ class WorkflowOrchestrator:
         finally:
             self._cleanup_temp_dirs()
 
+
 def parse_learning_rate(s):
     try:
         return float(s)
     except (TypeError, ValueError):
         return None
+
 
 class SplitProbAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -1083,6 +1104,7 @@ class SplitProbAction(argparse.Action):
                 f"got {train:.3f} + {val:.3f} + {test:.3f} = {total:.3f}"
             )
         setattr(namespace, self.dest, values)
+
 
 def main():
     parser = argparse.ArgumentParser(
