@@ -578,6 +578,21 @@ class LudwigDirectBackend:
 
         batch_size_cfg = batch_size or "auto"
 
+        label_column_path = config_params.get("label_column_data_path")
+        if label_column_path is not None and Path(label_column_path).exists():
+            # Read label data to determine cardinality
+            try:
+                label_series = pd.read_csv(label_column_path)[LABEL_COLUMN_NAME]
+                num_unique_labels = label_series.nunique()
+            except Exception as e:
+                logger.warning(f"Could not determine label cardinality, defaulting to 'binary': {e}")
+                num_unique_labels = 2
+        else:
+            logger.warning("label_column_data_path not provided, defaulting to 'binary'")
+            num_unique_labels = 2
+
+        output_type = "binary" if num_unique_labels == 2 else "category"
+
         conf: Dict[str, Any] = {
             "model_type": "ecd",
             "input_features": [
@@ -588,7 +603,7 @@ class LudwigDirectBackend:
                 }
             ],
             "output_features": [
-                {"name": LABEL_COLUMN_NAME, "type": "binary"}
+                {"name": LABEL_COLUMN_NAME, "type": output_type}
             ],
             "combiner": {"type": "concat"},
             "trainer": {
@@ -1056,6 +1071,7 @@ class WorkflowOrchestrator:
                 "learning_rate": self.args.learning_rate,
                 "random_seed": self.args.random_seed,
                 "early_stop": self.args.early_stop,
+                "label_column_data_path": csv_path,
             }
             yaml_str = self.backend.prepare_config(backend_args, split_cfg)
 
