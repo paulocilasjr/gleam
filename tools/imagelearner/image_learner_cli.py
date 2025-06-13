@@ -117,6 +117,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ImageLearner")
 
+
 def format_config_table_html(
         config: dict,
         split_info: Optional[str] = None,
@@ -213,70 +214,171 @@ def format_config_table_html(
         "</p><hr>"
     )
 
-def extract_metrics_from_json(train_stats: dict, test_stats: dict) -> Dict[str, Dict[str, float]]:
+
+METRIC_DISPLAY_NAMES = {
+    "accuracy": "Accuracy",
+    "accuracy_micro": "Accuracy (micro)",
+    "loss": "Loss",
+    "roc_auc": "AUC-ROC",
+    "hits_at_k": "Hits at K",
+    "precision": "Precision",
+    "recall": "Recall",
+    "specificity": "Specificity",
+    "kappa_score": "Cohen's Kappa",
+    "token_accuracy": "Token Accuracy",
+    "avg_precision_macro": "Precision (macro)",
+    "avg_recall_macro": "Recall (macro)",
+    "avg_f1_score_macro": "F1-score (macro)",
+    "avg_precision_micro": "Precision (micro)",
+    "avg_recall_micro": "Recall (micro)",
+    "avg_f1_score_micro": "F1-score (micro)",
+    "avg_precision_weighted": "Precision (weighted)",
+    "avg_recall_weighted": "Recall (weighted)",
+    "avg_f1_score_weighted": "F1-score (weighted)",
+}
+
+
+def detect_output_type(test_stats):
+    """Detects if the output type is 'binary' or 'category' based on test statistics.
+    
+    Args:
+        train_stats (dict): Training statistics.
+        test_stats (dict): Test statistics.
+    
+    Returns:
+        str: 'binary' or 'category'.
+    """
+    label_stats = test_stats.get("label", {})
+    per_class = label_stats.get("per_class_stats", {})
+    if len(per_class) == 2:
+        return "binary"
+    return "category"
+
+
+def extract_metrics_from_json(train_stats: dict, test_stats: dict, output_type: str) -> dict:
+    """Extracts relevant metrics from training and test statistics based on the output type.
+    
+    Args:
+        train_stats (dict): Training statistics.
+        test_stats (dict): Test statistics.
+        output_type (str): Output type ('binary' or 'category').
+    
+    Returns:
+        dict: Extracted metrics for training, validation, and test splits.
+    """
     metrics = {"training": {}, "validation": {}, "test": {}}
 
     def get_last_value(stats, key):
         val = stats.get(key)
-        return val[-1] if isinstance(val, list) and val else val if isinstance(val, (int, float)) else None
+        if isinstance(val, list) and val:
+            return val[-1]
+        elif isinstance(val, (int, float)):
+            return val
+        return None
 
-    # Training and Validation
     for split in ["training", "validation"]:
-        label_stats = train_stats.get(split, {}).get("label", {})
-        metrics[split] = {
-            "accuracy": get_last_value(label_stats, "accuracy"),
-            "accuracy_micro": get_last_value(label_stats, "accuracy_micro"),
-            "loss": get_last_value(label_stats, "loss"),
-            "roc_auc": get_last_value(label_stats, "roc_auc"),
-            "hits_at_k": get_last_value(label_stats, "hits_at_k"),
-        }
+        split_stats = train_stats.get(split, {})
+        if not split_stats:
+            logging.warning(f"No statistics found for {split} split")
+            continue
+        label_stats = split_stats.get("label", {})
+        if not label_stats:
+            logging.warning(f"No label statistics found for {split} split")
+            continue
+        if output_type == "binary":
+            metrics[split] = {
+                "accuracy": get_last_value(label_stats, "accuracy"),
+                "loss": get_last_value(label_stats, "loss"),
+                "precision": get_last_value(label_stats, "precision"),
+                "recall": get_last_value(label_stats, "recall"),
+                "specificity": get_last_value(label_stats, "specificity"),
+                "roc_auc": get_last_value(label_stats, "roc_auc"),
+            }
+        else:
+            metrics[split] = {
+                "accuracy": get_last_value(label_stats, "accuracy"),
+                "accuracy_micro": get_last_value(label_stats, "accuracy_micro"),
+                "loss": get_last_value(label_stats, "loss"),
+                "roc_auc": get_last_value(label_stats, "roc_auc"),
+                "hits_at_k": get_last_value(label_stats, "hits_at_k"),
+            }
 
-    # Test
-    label_stats = test_stats.get("label", {})
-    overall_stats = label_stats.get("overall_stats", {})
-    per_class_stats = label_stats.get("per_class_stats", {})
-
-    metrics["test"] = {
-        "accuracy": label_stats.get("accuracy"),
-        "accuracy_micro": label_stats.get("accuracy_micro"),
-        "loss": label_stats.get("loss"),
-        "roc_auc": label_stats.get("roc_auc"),
-        "hits_at_k": label_stats.get("hits_at_k"),
-        "kappa_score": overall_stats.get("kappa_score"),
-        "token_accuracy": overall_stats.get("token_accuracy"),
-        "avg_precision_macro": overall_stats.get("avg_precision_macro"),
-        "avg_recall_macro": overall_stats.get("avg_recall_macro"),
-        "avg_f1_score_macro": overall_stats.get("avg_f1_score_macro"),
-        "avg_precision_micro": overall_stats.get("avg_precision_micro"),
-        "avg_recall_micro": overall_stats.get("avg_recall_micro"),
-        "avg_f1_score_micro": overall_stats.get("avg_f1_score_micro"),
-        "avg_precision_weighted": overall_stats.get("avg_precision_weighted"),
-        "avg_recall_weighted": overall_stats.get("avg_recall_weighted"),
-        "avg_f1_score_weighted": overall_stats.get("avg_f1_score_weighted"),
-    }
-
-    # Macro averaged specificity for test
-    if per_class_stats:
-        specificities = [stats.get("specificity") for stats in per_class_stats.values() if "specificity" in stats]
-        if specificities:
-            metrics["test"]["specificity"] = np.mean(specificities)
+    test_label_stats = test_stats.get("label", {})
+    if not test_label_stats:
+        logging.warning("No label statistics found for test split")
+    else:
+        overall_stats = test_label_stats.get("overall_stats", {})
+        if output_type == "binary":
+            metrics["test"] = {
+                "accuracy": test_label_stats.get("accuracy"),
+                "precision": test_label_stats.get("precision"),
+                "recall": test_label_stats.get("recall"),
+                "specificity": test_label_stats.get("specificity"),
+                "loss": test_label_stats.get("loss"),
+                "roc_auc": test_label_stats.get("roc_auc"),
+                "kappa_score": overall_stats.get("kappa_score"),
+                "token_accuracy": overall_stats.get("token_accuracy"),
+                "avg_precision_macro": overall_stats.get("avg_precision_macro"),
+                "avg_recall_macro": overall_stats.get("avg_recall_macro"),
+                "avg_f1_score_macro": overall_stats.get("avg_f1_score_macro"),
+                "avg_precision_micro": overall_stats.get("avg_precision_micro"),
+                "avg_recall_micro": overall_stats.get("avg_recall_micro"),
+                "avg_f1_score_micro": overall_stats.get("avg_f1_score_micro"),
+                "avg_precision_weighted": overall_stats.get("avg_precision_weighted"),
+                "avg_recall_weighted": overall_stats.get("avg_recall_weighted"),
+                "avg_f1_score_weighted": overall_stats.get("avg_f1_score_weighted"),
+            }
+        else:
+            metrics["test"] = {
+                "accuracy": test_label_stats.get("accuracy"),
+                "accuracy_micro": test_label_stats.get("accuracy_micro"),
+                "loss": test_label_stats.get("loss"),
+                "roc_auc": test_label_stats.get("roc_auc"),
+                "hits_at_k": test_label_stats.get("hits_at_k"),
+                "kappa_score": overall_stats.get("kappa_score"),
+                "token_accuracy": overall_stats.get("token_accuracy"),
+                "avg_precision_macro": overall_stats.get("avg_precision_macro"),
+                "avg_recall_macro": overall_stats.get("avg_recall_macro"),
+                "avg_f1_score_macro": overall_stats.get("avg_f1_score_macro"),
+                "avg_precision_micro": overall_stats.get("avg_precision_micro"),
+                "avg_recall_micro": overall_stats.get("avg_recall_micro"),
+                "avg_f1_score_micro": overall_stats.get("avg_f1_score_micro"),
+                "avg_precision_weighted": overall_stats.get("avg_precision_weighted"),
+                "avg_recall_weighted": overall_stats.get("avg_recall_weighted"),
+                "avg_f1_score_weighted": overall_stats.get("avg_f1_score_weighted"),
+            }
 
     return metrics
 
+def generate_table_row(cells, styles):
+    """Helper function to generate an HTML table row.
+    
+    Args:
+        cells (list): List of cell values.
+        styles (str): CSS styles for the cells.
+    
+    Returns:
+        str: HTML row string.
+    """
+    return "<tr>" + "".join(f"<td style='{styles}'>{cell}</td>" for cell in cells) + "</tr>"
+
 
 def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
-    all_metrics = extract_metrics_from_json(train_stats, test_stats)
-    metric_display_names = {
-        "accuracy": "Average Class Accuracy",
-        "accuracy_micro": "Overall Accuracy",
-        "loss": "Loss",
-        "roc_auc": "AUC-ROC",
-        "hits_at_k": "Hits at K",
-    }
+    """Formats a combined HTML table for training, validation, and test metrics.
+    
+    Args:
+        train_stats (dict): Training statistics.
+        test_stats (dict): Test statistics.
+    
+    Returns:
+        str: HTML table string.
+    """
+    output_type = detect_output_type(test_stats)
+    all_metrics = extract_metrics_from_json(train_stats, test_stats, output_type)
     rows = []
     for metric_key in sorted(all_metrics["training"].keys()):
         if metric_key in all_metrics["validation"] and metric_key in all_metrics["test"]:
-            display_name = metric_display_names.get(metric_key, metric_key.replace('_', ' ').title())
+            display_name = METRIC_DISPLAY_NAMES.get(metric_key, metric_key.replace('_', ' ').title())
             t = all_metrics["training"].get(metric_key)
             v = all_metrics["validation"].get(metric_key)
             te = all_metrics["test"].get(metric_key)
@@ -284,7 +386,7 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
                 rows.append([display_name, f"{t:.4f}", f"{v:.4f}", f"{te:.4f}"])
 
     if not rows:
-        return "<p><em>No metric values found.</em></p>"
+        return "<table><tr><td>No metric values found.</td></tr></table>"
 
     html = (
         "<h2 style='text-align: center;'>Model Performance Summary</h2>"
@@ -298,34 +400,33 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
         "</tr></thead><tbody>"
     )
     for row in rows:
-        html += "<tr>"
-        html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>{row[0]}</td>"
-        for cell in row[1:]:
-            html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
-        html += "</tr>"
+        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
     html += "</tbody></table></div><br>"
     return html
 
 def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> str:
-    all_metrics = extract_metrics_from_json(train_stats, test_stats)
-    metric_display_names = {
-        "accuracy": "Average Class Accuracy",
-        "accuracy_micro": "Overall Accuracy",
-        "loss": "Loss",
-        "roc_auc": "AUC-ROC",
-        "hits_at_k": "Hits at K",
-    }
+    """Formats an HTML table for training and validation metrics.
+    
+    Args:
+        train_stats (dict): Training statistics.
+        test_stats (dict): Test statistics.
+    
+    Returns:
+        str: HTML table string.
+    """
+    output_type = detect_output_type(test_stats)
+    all_metrics = extract_metrics_from_json(train_stats, test_stats, output_type)
     rows = []
     for metric_key in sorted(all_metrics["training"].keys()):
         if metric_key in all_metrics["validation"]:
-            display_name = metric_display_names.get(metric_key, metric_key.replace('_', ' ').title())
+            display_name = METRIC_DISPLAY_NAMES.get(metric_key, metric_key.replace('_', ' ').title())
             t = all_metrics["training"].get(metric_key)
             v = all_metrics["validation"].get(metric_key)
             if t is not None and v is not None:
                 rows.append([display_name, f"{t:.4f}", f"{v:.4f}"])
 
     if not rows:
-        return "<p><em>No metric values found for Train/Validation.</em></p>"
+        return "<table><tr><td>No metric values found for Train/Validation.</td></tr></table>"
 
     html = (
         "<h2 style='text-align: center;'>Train/Validation Performance Summary</h2>"
@@ -338,46 +439,28 @@ def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> st
         "</tr></thead><tbody>"
     )
     for row in rows:
-        html += "<tr>"
-        html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>{row[0]}</td>"
-        for cell in row[1:]:
-            html += f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{cell}</td>"
-        html += "</tr>"
+        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
     html += "</tbody></table></div><br>"
     return html
 
-def format_test_merged_stats_table_html(test_metrics: Dict[str, float]) -> str:
-    metric_display_names = {
-        "accuracy": "Average Class Accuracy",
-        "accuracy_micro": "Overall Accuracy",
-        "loss": "Loss",
-        "roc_auc": "AUC-ROC",
-        "hits_at_k": "Hits at K",
-        "kappa_score": "Cohen's Kappa",
-        "token_accuracy": "Token Accuracy",
-        "avg_precision_macro": "Precision (macro)",
-        "avg_recall_macro": "Recall (macro)",
-        "avg_f1_score_macro": "F1-score (macro)",
-        "avg_precision_micro": "Precision (micro)",
-        "avg_recall_micro": "Recall (micro)",
-        "avg_f1_score_micro": "F1-score (micro)",
-        "avg_precision_weighted": "Precision (weighted)",
-        "avg_recall_weighted": "Recall (weighted)",
-        "avg_f1_score_weighted": "F1-score (weighted)",
-        "specificity": "Specificity (macro)",
-    }
+def format_test_merged_stats_table_html(test_metrics: Dict[str, Optional[float]]) -> str:
+    """Formats an HTML table for test metrics.
+    
+    Args:
+        test_metrics (Dict[str, Optional[float]]): Test metrics.
+    
+    Returns:
+        str: HTML table string.
+    """
     rows = []
     for key in sorted(test_metrics.keys()):
-        display_name = metric_display_names.get(key, key.replace('_', ' ').title())
+        display_name = METRIC_DISPLAY_NAMES.get(key, key.replace('_', ' ').title())
         value = test_metrics[key]
         if value is not None:
-            rows.append(
-                f"<tr><td style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>{display_name}</td>"
-                f"<td style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>{value:.4f}</td></tr>"
-            )
+            rows.append([display_name, f"{value:.4f}"])
 
     if not rows:
-        return "<p><em>No test metric values found.</em></p>"
+        return "<table><tr><td>No test metric values found.</td></tr></table>"
 
     html = (
         "<h2 style='text-align: center;'>Test Performance Summary</h2>"
@@ -387,9 +470,10 @@ def format_test_merged_stats_table_html(test_metrics: Dict[str, float]) -> str:
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
         "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Test</th>"
         "</tr></thead><tbody>"
-        + "".join(rows) +
-        "</tbody></table></div><br>"
     )
+    for row in rows:
+        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
+    html += "</tbody></table></div><br>"
     return html
 
 
@@ -853,14 +937,13 @@ class LudwigDirectBackend:
                     train_stats = json.load(f)
                 with open(test_stats_path) as f:
                     test_stats = json.load(f)
-                output_feature = next(iter(train_stats.keys()), "")
-                if output_feature:
-                    all_metrics = extract_metrics_from_json(train_stats, test_stats)
-                    metrics_html = format_stats_table_html(train_stats, test_stats)
-                    train_val_metrics_html = format_train_val_stats_table_html(train_stats, test_stats)
-                    test_metrics_html = format_test_merged_stats_table_html(all_metrics["test"])
+                output_type = detect_output_type(test_stats)  # Determine output type
+                all_metrics = extract_metrics_from_json(train_stats, test_stats, output_type)  # Pass output_type
+                metrics_html = format_stats_table_html(train_stats, test_stats)
+                train_val_metrics_html = format_train_val_stats_table_html(train_stats, test_stats)
+                test_metrics_html = format_test_merged_stats_table_html(all_metrics["test"])
         except Exception as e:
-            logger.warning(f"Could not load stats for HTML report: {e}")
+            logger.warning(f"Could not load stats for HTML report: {type(e).__name__}: {e}")
 
         config_html = ""
         training_progress = self.get_training_process(output_dir)
