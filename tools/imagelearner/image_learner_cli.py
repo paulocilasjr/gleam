@@ -952,33 +952,57 @@ class LudwigDirectBackend:
         except Exception as e:
             logger.warning(f"Could not load config for HTML report: {e}")
 
-        def render_img_section(title: str, dir_path: Path) -> str:
+        def render_img_section(title: str, dir_path: Path, output_type: str = None) -> str:
             if not dir_path.exists():
                 return f"<h2>{title}</h2><p><em>Directory not found.</em></p>"
 
-            # Get all PNG images
             imgs = list(dir_path.glob("*.png"))
             if not imgs:
                 return f"<h2>{title}</h2><p><em>No plots found.</em></p>"
 
-            # Prioritize images for the Test Visualizations section
-            if title == "Test Visualizations":
-                prioritized = []
-                remaining = []
-                for img in imgs:
-                    if img.name == "confusion_matrix__label_top10.png":
-                        prioritized.append((0, img))
-                    elif img.name == "roc_curves.png":
-                        prioritized.append((1, img))
-                    else:
-                        remaining.append(img)
-                # Sort remaining images alphabetically
-                remaining.sort()
-                # Combine prioritized and remaining, with prioritized sorted by their assigned order
-                imgs = [img for _, img in sorted(prioritized)] + remaining
+            if title == "Test Visualizations" and output_type == "binary":
+                order = [
+                    "confusion_matrix__label_top2.png",
+                    "roc_curves_from_prediction_statistics.png",
+                    "compare_performance_label.png",
+                    "confusion_matrix_entropy__label_top2.png",
+                ]
+                img_names = {img.name: img for img in imgs}
+                ordered_imgs = [img_names[fname] for fname in order if fname in img_names]
+                remaining = sorted([img for img in imgs if img.name not in order and img.name != "roc_curves.png"])
+                imgs = ordered_imgs + remaining
+
+            elif title == "Test Visualizations" and output_type == "category":
+                unwanted = {
+                    "compare_classifiers_multiclass_multimetric__label_best10.png",
+                    "compare_classifiers_multiclass_multimetric__label_top10.png",
+                    "compare_classifiers_multiclass_multimetric__label_worst10.png",
+                }
+                display_order = [
+                    "confusion_matrix__label_top10.png",
+                    "roc_curves.png",
+                    "compare_performance_label.png",
+                    "compare_classifiers_performance_from_prob.png",
+                    "compare_classifiers_multiclass_multimetric__label_sorted.png",
+                    "confusion_matrix_entropy__label_top10.png",
+                ]
+                img_names = {img.name: img for img in imgs if img.name not in unwanted}
+                ordered_imgs = [img_names[fname] for fname in display_order if fname in img_names]
+                # Append any remaining images not in display_order, alphabetically
+                remaining = sorted([img for img in img_names.values() if img.name not in display_order])
+                imgs = ordered_imgs + remaining
+
             else:
-                # For non-test sections (e.g., Training & Validation), keep alphabetical order
-                imgs = sorted(imgs)
+                # Fallback: alphabetical, but filter unwanted images for category
+                if output_type == "category":
+                    unwanted = {
+                        "compare_classifiers_multiclass_multimetric__label_best10.png",
+                        "compare_classifiers_multiclass_multimetric__label_top10.png",
+                        "compare_classifiers_multiclass_multimetric__label_worst10.png",
+                    }
+                    imgs = sorted([img for img in imgs if img.name not in unwanted])
+                else:
+                    imgs = sorted(imgs)
 
             section_html = f"<h2 style='text-align: center;'>{title}</h2><div>"
             for img in imgs:
@@ -994,7 +1018,7 @@ class LudwigDirectBackend:
             return section_html
 
         train_plots_html = train_val_metrics_html + render_img_section("Training & Validation Visualizations", train_viz_dir)
-        test_plots_html = test_metrics_html + render_img_section("Test Visualizations", test_viz_dir)
+        test_plots_html = test_metrics_html + render_img_section("Test Visualizations", test_viz_dir, output_type)
         html += build_tabbed_html(config_html + metrics_html, train_plots_html, test_plots_html)
         html += get_html_closing()
 
