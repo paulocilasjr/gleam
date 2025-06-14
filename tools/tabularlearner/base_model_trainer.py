@@ -47,6 +47,9 @@ class BaseModelTrainer:
         self.test_file = test_file
         self.test_data = None
 
+        if not self.output_dir:
+            raise ValueError("output_dir must be specified and not None")
+
         LOG.info(f"Model kwargs: {self.__dict__}")
 
     def load_data(self):
@@ -192,6 +195,9 @@ class BaseModelTrainer:
     def save_html_report(self):
         LOG.info("Saving HTML report")
 
+        if not self.output_dir:
+            raise ValueError("output_dir must be specified and not None")
+
         model_name = type(self.best_model).__name__
         excluded_params = ['html', 'log_experiment', 'system_log', 'test_data']
         filtered_setup_params = {
@@ -252,12 +258,12 @@ class BaseModelTrainer:
 
         html_content = f"""
         {get_html_template()}
-            <h1>PyCaret Model Training Report</h1>
+            <h1>Tabular Learner Model Report</h1>
             <div class="tabs">
                 <div class="tab" onclick="openTab(event, 'summary')">
-                Setup & Best Model</div>
+                Validation Result Summary & Config</div>
                 <div class="tab" onclick="openTab(event, 'plots')">
-                Best Model Plots</div>
+                Test Results</div>
                 <div class="tab" onclick="openTab(event, 'feature')">
                 Feature Importance</div>
         """
@@ -269,6 +275,17 @@ class BaseModelTrainer:
         html_content += f"""
             </div>
             <div id="summary" class="tab-content">
+                <h2>Model Metrics from Cross-Validation Set</h2>
+                <h2>Best Model: {model_name}</h2>
+                <h5>The best model is selected by: Accuracy (Classification)
+                or R2 (Regression).</h5>
+                {self.results.to_html(index=False, classes='table sortable')}
+                <h2>Best Model's Hyperparameters</h2>
+                {best_model_params.to_html(
+                    index=False,
+                    header=True,
+                    classes='table sortable'
+                )}
                 <h2>Setup Parameters</h2>
                 {setup_params_table.to_html(
                     index=False,
@@ -278,22 +295,17 @@ class BaseModelTrainer:
                 <h5>If you want to know all the experiment setup parameters,
                   please check the PyCaret documentation for
                   the classification/regression <code>exp</code> function.</h5>
-                <h2>Best Model: {model_name}</h2>
-                {best_model_params.to_html(
-                    index=False,
-                    header=True,
-                    classes='table sortable'
-                )}
-                <h2>Comparison Results on the Cross-Validation Set</h2>
-                {self.results.to_html(index=False, classes='table sortable')}
-                <h2>Results on the Test Set for the best model</h2>
-                {self.test_result_df.to_html(
-                    index=False,
-                    classes='table sortable'
-                )}
             </div>
             <div id="plots" class="tab-content">
-                <h2>Best Model Plots on the testing set</h2>
+                <h2>Best Model: {model_name}</h2>
+                <h5>The best model is selected by: Accuracy (Classification)
+                or R2 (Regression).</h5>
+                <h2>Test Metrics</h2>
+                {self.test_result_df.to_html(
+                    index=False
+                )}
+
+                <h2>Test Results</h2>
                 {plots_html}
             </div>
             <div id="feature" class="tab-content">
@@ -315,7 +327,7 @@ class BaseModelTrainer:
                 var headers = table.querySelectorAll("th");
                 headers.forEach(function(header, index) {
                     header.style.cursor = "pointer";
-                    // Add initial arrow (up) to indicate sortability
+                    // Add initial arrow (up) to indicate sortability, use Unicode ↑ (U+2191)
                     header.innerHTML += '<span class="sort-arrow"> ↑</span>';
                     header.addEventListener("click", function() {
                         var direction = this.getAttribute(
@@ -364,7 +376,7 @@ class BaseModelTrainer:
         """
         with open(
             os.path.join(self.output_dir, "comparison_result.html"),
-            "w"
+            "w", encoding="utf-8"
         ) as file:
             file.write(html_content)
 
@@ -376,8 +388,7 @@ class BaseModelTrainer:
 
     # not working now
     def generate_tree_plots(self):
-        from sklearn.ensemble import RandomForestClassifier, \
-            RandomForestRegressor
+        from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
         from xgboost import XGBClassifier, XGBRegressor
         from explainerdashboard.explainers import RandomForestExplainer
 
@@ -385,17 +396,19 @@ class BaseModelTrainer:
         X_test = self.exp.X_test_transformed.copy()
         y_test = self.exp.y_test_transformed
 
-        is_rf = isinstance(self.best_model, RandomForestClassifier) or \
-            isinstance(self.best_model, RandomForestRegressor)
+        is_rf = isinstance(self.best_model, (RandomForestClassifier, RandomForestRegressor))
+        is_xgb = isinstance(self.best_model, (XGBClassifier, XGBRegressor))
 
-        is_xgb = isinstance(self.best_model, XGBClassifier) or \
-            isinstance(self.best_model, XGBRegressor)
+        num_trees = None
+        if is_rf:
+            num_trees = self.best_model.n_estimators
+        elif is_xgb:
+            num_trees = len(self.best_model.get_booster().get_dump())
+        else:
+            LOG.warning("Tree plots not supported for this model type.")
+            return  # Prevents using undefined num_trees
 
         try:
-            if is_rf:
-                num_trees = self.best_model.n_estimators
-            if is_xgb:
-                num_trees = len(self.best_model.get_booster().get_dump())
             explainer = RandomForestExplainer(self.best_model, X_test, y_test)
             for i in range(num_trees):
                 fig = explainer.decisiontree_encoded(tree_idx=i, index=0)
