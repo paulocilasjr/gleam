@@ -109,6 +109,32 @@ MODEL_ENCODER_TEMPLATES: Dict[str, Any] = {
     'mobilenet_v3_large': {'type': 'mobilenet_v3_large'},
     'mobilenet_v3_small': {'type': 'mobilenet_v3_small'},
 }
+METRIC_DISPLAY_NAMES = {
+    "accuracy": "Accuracy",
+    "accuracy_micro": "Accuracy-Micro",
+    "loss": "Loss",
+    "roc_auc": "ROC-AUC",
+    "roc_auc_macro": "ROC-AUC-Macro",
+    "roc_auc_micro": "ROC-AUC-Micro",
+    "hits_at_k": "Hits at K",
+    "precision": "Precision",
+    "recall": "Recall",
+    "specificity": "Specificity",
+    "kappa_score": "Cohen's Kappa",
+    "token_accuracy": "Token Accuracy",
+    "avg_precision_macro": "Precision-Macro",
+    "avg_recall_macro": "Recall-Macro",
+    "avg_f1_score_macro": "F1-score-Macro",
+    "avg_precision_micro": "Precision-Micro",
+    "avg_recall_micro": "Recall-Micro",
+    "avg_f1_score_micro": "F1-score-Micro",
+    "avg_precision_weighted": "Precision-Weighted",
+    "avg_recall_weighted": "Recall-Weighted",
+    "avg_f1_score_weighted": "F1-score-Weighted",
+    "average_precision_macro": " Precision-Average-Macro",
+    "average_precision_micro": "Precision-Average-Micro",
+    "average_precision_samples": "Precision-Average-Samples",
+}
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -116,6 +142,129 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(name)s: %(message)s'
 )
 logger = logging.getLogger("ImageLearner")
+
+def get_metrics_help_modal() -> str:
+    modal_html = '''
+<div id="metricsHelpModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Model Evaluation Metrics — Help Guide</h2>
+    <div class="metrics-guide">
+
+      <h3>1) General Metrics</h3>
+      <p><strong>Loss:</strong> Measures the difference between predicted and actual values. Lower is better. Often used for optimization during training.</p>
+      <p><strong>Accuracy:</strong> Proportion of correct predictions among all predictions. Simple but can be misleading for imbalanced datasets.</p>
+      <p><strong>Micro Accuracy:</strong> Calculates accuracy by summing up all individual true positives and true negatives across all classes, making it suitable for multiclass or multilabel problems.</p>
+      <p><strong>Token Accuracy:</strong> Measures how often the predicted tokens (e.g., in sequences) match the true tokens. Useful in sequence prediction tasks like NLP.</p>
+
+      <h3>2) Precision, Recall & Specificity</h3>
+      <p><strong>Precision:</strong> Out of all positive predictions, how many were correct. Precision = TP / (TP + FP). Helps when false positives are costly.</p>
+      <p><strong>Recall (Sensitivity):</strong> Out of all actual positives, how many were predicted correctly. Recall = TP / (TP + FN). Important when missing positives is risky.</p>
+      <p><strong>Specificity:</strong> True negative rate. Measures how well the model identifies negatives. Specificity = TN / (TN + FP). Useful in medical testing to avoid false alarms.</p>
+
+      <h3>3) Macro, Micro, and Weighted Averages</h3>
+      <p><strong>Macro Precision / Recall / F1:</strong> Averages the metric across all classes, treating each class equally, regardless of class frequency. Best when class sizes are balanced.</p>
+      <p><strong>Micro Precision / Recall / F1:</strong> Aggregates TP, FP, FN across all classes before computing the metric. Gives a global view and is ideal for class-imbalanced problems.</p>
+      <p><strong>Weighted Precision / Recall / F1:</strong> Averages each metric across classes, weighted by the number of true instances per class. Balances importance of classes based on frequency.</p>
+
+      <h3>4) Average Precision (PR-AUC Variants)</h3>
+      <p><strong>Average Precision Macro:</strong> Precision-Recall AUC averaged across all classes equally. Useful for balanced multi-class problems.</p>
+      <p><strong>Average Precision Micro:</strong> Global Precision-Recall AUC using all instances. Best for imbalanced data or multi-label classification.</p>
+      <p><strong>Average Precision Samples:</strong> Precision-Recall AUC averaged across individual samples (not classes). Ideal for multi-label problems where each sample can belong to multiple classes.</p>
+
+      <h3>5) ROC-AUC Variants</h3>
+      <p><strong>ROC-AUC:</strong> Measures model's ability to distinguish between classes. AUC = 1 is perfect; 0.5 is random guessing. Use for binary classification.</p>
+      <p><strong>Macro ROC-AUC:</strong> Averages the AUC across all classes equally. Suitable when classes are balanced and of equal importance.</p>
+      <p><strong>Micro ROC-AUC:</strong> Computes AUC from aggregated predictions across all classes. Useful in multiclass or multilabel settings with imbalance.</p>
+
+      <h3>6) Ranking Metrics</h3>
+      <p><strong>Hits at K:</strong> Measures whether the true label is among the top-K predictions. Common in recommendation systems and retrieval tasks.</p>
+
+      <h3>7) Confusion Matrix Stats (Per Class)</h3>
+      <p><strong>True Positives / Negatives (TP / TN):</strong> Correct predictions for positives and negatives respectively.</p>
+      <p><strong>False Positives / Negatives (FP / FN):</strong> Incorrect predictions — false alarms and missed detections.</p>
+
+      <h3>8) Other Useful Metrics</h3>
+      <p><strong>Cohen's Kappa:</strong> Measures agreement between predicted and actual values adjusted for chance. Useful for multiclass classification with imbalanced labels.</p>
+      <p><strong>Matthews Correlation Coefficient (MCC):</strong> Balanced measure of prediction quality that takes into account TP, TN, FP, and FN. Particularly effective for imbalanced datasets.</p>
+
+      <h3>9) Metric Recommendations</h3>
+      <ul>
+        <li>Use <strong>Accuracy + F1</strong> for balanced data.</li>
+        <li>Use <strong>Precision, Recall, ROC-AUC</strong> for imbalanced datasets.</li>
+        <li>Use <strong>Average Precision Micro</strong> for multilabel or class-imbalanced problems.</li>
+        <li>Use <strong>Macro scores</strong> when all classes should be treated equally.</li>
+        <li>Use <strong>Weighted scores</strong> when class imbalance should be accounted for without ignoring small classes.</li>
+        <li>Use <strong>Confusion Matrix stats</strong> to analyze class-wise performance.</li>
+        <li>Use <strong>Hits at K</strong> for recommendation or ranking-based tasks.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+'''
+    modal_css = '''
+<style>
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+}
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 800px;
+}
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+.metrics-guide h3 {
+  margin-top: 20px;
+}
+.metrics-guide p {
+  margin: 5px 0;
+}
+.metrics-guide ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+</style>
+'''
+    modal_js = '''
+<script>
+var modal = document.getElementById("metricsHelpModal");
+var span = document.getElementsByClassName("close")[0];
+span.onclick = function() {
+  modal.style.display = "none";
+}
+window.onclick = function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+}
+function openMetricsHelp() {
+  modal.style.display = "block";
+}
+</script>
+'''
+    return modal_css + modal_html + modal_js
 
 
 def format_config_table_html(
@@ -215,36 +364,13 @@ def format_config_table_html(
     )
 
 
-METRIC_DISPLAY_NAMES = {
-    "accuracy": "Accuracy",
-    "accuracy_micro": "Accuracy (micro)",
-    "loss": "Loss",
-    "roc_auc": "AUC-ROC",
-    "hits_at_k": "Hits at K",
-    "precision": "Precision",
-    "recall": "Recall",
-    "specificity": "Specificity",
-    "kappa_score": "Cohen's Kappa",
-    "token_accuracy": "Token Accuracy",
-    "avg_precision_macro": "Precision (macro)",
-    "avg_recall_macro": "Recall (macro)",
-    "avg_f1_score_macro": "F1-score (macro)",
-    "avg_precision_micro": "Precision (micro)",
-    "avg_recall_micro": "Recall (micro)",
-    "avg_f1_score_micro": "F1-score (micro)",
-    "avg_precision_weighted": "Precision (weighted)",
-    "avg_recall_weighted": "Recall (weighted)",
-    "avg_f1_score_weighted": "F1-score (weighted)",
-}
-
-
 def detect_output_type(test_stats):
     """Detects if the output type is 'binary' or 'category' based on test statistics.
-    
+
     Args:
         train_stats (dict): Training statistics.
         test_stats (dict): Test statistics.
-    
+
     Returns:
         str: 'binary' or 'category'.
     """
@@ -257,12 +383,12 @@ def detect_output_type(test_stats):
 
 def extract_metrics_from_json(train_stats: dict, test_stats: dict, output_type: str) -> dict:
     """Extracts relevant metrics from training and test statistics based on the output type.
-    
+
     Args:
         train_stats (dict): Training statistics.
         test_stats (dict): Test statistics.
         output_type (str): Output type ('binary' or 'category').
-    
+
     Returns:
         dict: Extracted metrics for training, validation, and test splits.
     """
@@ -303,60 +429,51 @@ def extract_metrics_from_json(train_stats: dict, test_stats: dict, output_type: 
                 "hits_at_k": get_last_value(label_stats, "hits_at_k"),
             }
 
+    # Test metrics: dynamic extraction according to exclusions
     test_label_stats = test_stats.get("label", {})
     if not test_label_stats:
         logging.warning("No label statistics found for test split")
     else:
+        combined_stats = test_stats.get("combined", {})
         overall_stats = test_label_stats.get("overall_stats", {})
+
+        # Define exclusions
         if output_type == "binary":
-            metrics["test"] = {
-                "accuracy": test_label_stats.get("accuracy"),
-                "precision": test_label_stats.get("precision"),
-                "recall": test_label_stats.get("recall"),
-                "specificity": test_label_stats.get("specificity"),
-                "loss": test_label_stats.get("loss"),
-                "roc_auc": test_label_stats.get("roc_auc"),
-                "kappa_score": overall_stats.get("kappa_score"),
-                "token_accuracy": overall_stats.get("token_accuracy"),
-                "avg_precision_macro": overall_stats.get("avg_precision_macro"),
-                "avg_recall_macro": overall_stats.get("avg_recall_macro"),
-                "avg_f1_score_macro": overall_stats.get("avg_f1_score_macro"),
-                "avg_precision_micro": overall_stats.get("avg_precision_micro"),
-                "avg_recall_micro": overall_stats.get("avg_recall_micro"),
-                "avg_f1_score_micro": overall_stats.get("avg_f1_score_micro"),
-                "avg_precision_weighted": overall_stats.get("avg_precision_weighted"),
-                "avg_recall_weighted": overall_stats.get("avg_recall_weighted"),
-                "avg_f1_score_weighted": overall_stats.get("avg_f1_score_weighted"),
-            }
+            exclude = {"per_class_stats", "precision_recall_curve", "roc_curve"}
         else:
-            metrics["test"] = {
-                "accuracy": test_label_stats.get("accuracy"),
-                "accuracy_micro": test_label_stats.get("accuracy_micro"),
-                "loss": test_label_stats.get("loss"),
-                "roc_auc": test_label_stats.get("roc_auc"),
-                "hits_at_k": test_label_stats.get("hits_at_k"),
-                "kappa_score": overall_stats.get("kappa_score"),
-                "token_accuracy": overall_stats.get("token_accuracy"),
-                "avg_precision_macro": overall_stats.get("avg_precision_macro"),
-                "avg_recall_macro": overall_stats.get("avg_recall_macro"),
-                "avg_f1_score_macro": overall_stats.get("avg_f1_score_macro"),
-                "avg_precision_micro": overall_stats.get("avg_precision_micro"),
-                "avg_recall_micro": overall_stats.get("avg_recall_micro"),
-                "avg_f1_score_micro": overall_stats.get("avg_f1_score_micro"),
-                "avg_precision_weighted": overall_stats.get("avg_precision_weighted"),
-                "avg_recall_weighted": overall_stats.get("avg_recall_weighted"),
-                "avg_f1_score_weighted": overall_stats.get("avg_f1_score_weighted"),
-            }
+            exclude = {"per_class_stats", "confusion_matrix"}
+
+        # 1. Get all scalar test_label_stats not excluded
+        test_metrics = {}
+        for k, v in test_label_stats.items():
+            if k in exclude:
+                continue
+            # Exclude overall_stats (handled below)
+            if k == "overall_stats":
+                continue
+            # Only include scalars (not dicts/lists)
+            if isinstance(v, (int, float, str, bool)):
+                test_metrics[k] = v
+
+        # 2. Add overall_stats (flattened)
+        for k, v in overall_stats.items():
+            test_metrics[k] = v
+
+        # 3. Optionally include combined/loss if present and not already
+        if "loss" in combined_stats and "loss" not in test_metrics:
+            test_metrics["loss"] = combined_stats["loss"]
+
+        metrics["test"] = test_metrics
 
     return metrics
 
 def generate_table_row(cells, styles):
     """Helper function to generate an HTML table row.
-    
+
     Args:
         cells (list): List of cell values.
         styles (str): CSS styles for the cells.
-    
+
     Returns:
         str: HTML row string.
     """
@@ -365,11 +482,11 @@ def generate_table_row(cells, styles):
 
 def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
     """Formats a combined HTML table for training, validation, and test metrics.
-    
+
     Args:
         train_stats (dict): Training statistics.
         test_stats (dict): Test statistics.
-    
+
     Returns:
         str: HTML table string.
     """
@@ -404,13 +521,14 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
     html += "</tbody></table></div><br>"
     return html
 
+
 def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> str:
     """Formats an HTML table for training and validation metrics.
-    
+
     Args:
         train_stats (dict): Training statistics.
         test_stats (dict): Test statistics.
-    
+
     Returns:
         str: HTML table string.
     """
@@ -443,12 +561,13 @@ def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> st
     html += "</tbody></table></div><br>"
     return html
 
+
 def format_test_merged_stats_table_html(test_metrics: Dict[str, Optional[float]]) -> str:
     """Formats an HTML table for test metrics.
-    
+
     Args:
         test_metrics (Dict[str, Optional[float]]): Test metrics.
-    
+
     Returns:
         str: HTML table string.
     """
@@ -1017,9 +1136,14 @@ class LudwigDirectBackend:
             section_html += "</div>"
             return section_html
 
-        train_plots_html = train_val_metrics_html + render_img_section("Training & Validation Visualizations", train_viz_dir)
-        test_plots_html = test_metrics_html + render_img_section("Test Visualizations", test_viz_dir, output_type)
-        html += build_tabbed_html(config_html + metrics_html, train_plots_html, test_plots_html)
+        button_html = '<button onclick="openMetricsHelp()">Model Evaluation Metrics — Help Guide</button><br><br>'
+        tab1_content = button_html + config_html + metrics_html
+        tab2_content = button_html + train_val_metrics_html + render_img_section("Training & Validation Visualizations", train_viz_dir)
+        tab3_content = button_html + test_metrics_html + render_img_section("Test Visualizations", test_viz_dir, output_type)
+
+        tabbed_html = build_tabbed_html(tab1_content, tab2_content, tab3_content)
+        modal_html = get_metrics_help_modal()
+        html += tabbed_html + modal_html
         html += get_html_closing()
 
         try:
@@ -1031,7 +1155,6 @@ class LudwigDirectBackend:
             raise
 
         return report_path
-
 
 class WorkflowOrchestrator:
     def __init__(self, args: argparse.Namespace, backend: Backend):
