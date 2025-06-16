@@ -2,6 +2,7 @@ categories:
   - Machine Learning
   - Image Processing
 name: galaxy_tiler
+owner: goeckslab
 long_description: |
   The Tiler tool enables automated tiling of whole slide images (WSIs) within the Galaxy platform,
   leveraging the PyHIST library to generate high-resolution image tiles suitable for training
@@ -13,6 +14,7 @@ long_description: |
   By producing high-quality tiles from WSIs, this tool facilitates downstream tasks such as
   image classification, multiple instance learning, and segmentation model training.
   Its integration into Galaxy provides a reproducible, code-free interface for researchers
+
 remote_repository_url: https://github.com/goeckslab/gleam.git
 homepage_url: https://github.com/goeckslab/gleam/tree/main/tools/tiler
 
