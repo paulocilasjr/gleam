@@ -6,7 +6,7 @@
     </requirements>
 
     <command><![CDATA[
-        python $__tool_directory__/pytorch_embeddings.py 
+        python $__tool_directory__/pytorch_embedding.py 
         --zip_file '$input_zip' 
         --output_csv '$output_csv'
         --model_name '$model_name'
