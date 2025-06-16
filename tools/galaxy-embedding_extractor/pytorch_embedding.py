@@ -26,10 +26,9 @@ from inspect import signature
 
 import cv2
 import numpy as np
-from PIL import Image
-
 import torch
 import torchvision.models as models
+from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
