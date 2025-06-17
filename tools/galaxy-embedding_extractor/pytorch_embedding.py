@@ -32,15 +32,6 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-# Create a cache directory in the current working directory
-cache_dir = os.path.join(os.getcwd(), 'hf_cache')
-os.makedirs(cache_dir, exist_ok=True)
-# Set the environment variable for torchvision cache
-os.environ['TORCH_HOME'] = cache_dir
-torch.hub.set_dir(cache_dir)
-# Optionally, set TRANSFORMERS_CACHE for Hugging Face models (if used elsewhere)
-os.environ['TRANSFORMERS_CACHE'] = cache_dir
-
 # Configure logging
 logging.basicConfig(
     filename="/tmp/ludwig_embeddings.log",
@@ -48,6 +39,25 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.DEBUG,
 )
+
+# Create a cache directory in the current working directory
+cache_dir = os.path.join(os.getcwd(), 'hf_cache')
+try:
+    os.makedirs(cache_dir, exist_ok=True)
+    logging.info(f"Cache directory created: {cache_dir}, writable: {os.access(cache_dir, os.W_OK)}")
+except OSError as e:
+    logging.error(f"Failed to create cache directory {cache_dir}: {e}")
+    raise
+
+# Set environment variables for cache directories before any model loading
+os.environ['TORCH_HOME'] = cache_dir
+os.environ['TRANSFORMERS_CACHE'] = cache_dir
+os.environ['HF_HOME'] = cache_dir  # Additional Hugging Face cache variable
+# Set torch.hub cache directory
+torch.hub.set_dir(cache_dir)
+logging.info(f"Set cache directories: TORCH_HOME={os.environ['TORCH_HOME']}, "
+             f"TRANSFORMERS_CACHE={os.environ['TRANSFORMERS_CACHE']}, "
+             f"HF_HOME={os.environ['HF_HOME']}")
 
 # Available models from torchvision
 AVAILABLE_MODELS = {
