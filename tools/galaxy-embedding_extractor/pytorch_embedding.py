@@ -32,6 +32,12 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
+# Create a cache directory in the current working directory
+cache_dir = os.path.join(os.getcwd(), 'hf_cache')
+os.makedirs(cache_dir, exist_ok=True)
+# Set the envrionment variable to use this new cache
+os.enrion['TRANSFORMERS_CACHE'] = cache_dir
+
 # Configure logging
 logging.basicConfig(
     filename="/tmp/ludwig_embeddings.log",
