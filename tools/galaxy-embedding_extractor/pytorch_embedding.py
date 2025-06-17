@@ -35,7 +35,10 @@ from torchvision import transforms
 # Create a cache directory in the current working directory
 cache_dir = os.path.join(os.getcwd(), 'hf_cache')
 os.makedirs(cache_dir, exist_ok=True)
-# Set the envrionment variable to use this new cache
+# Set the environment variable for torchvision cache
+os.environ['TORCH_HOME'] = cache_dir
+torch.hub.set_dir(cache_dir)
+# Optionally, set TRANSFORMERS_CACHE for Hugging Face models (if used elsewhere)
 os.environ['TRANSFORMERS_CACHE'] = cache_dir
 
 # Configure logging
