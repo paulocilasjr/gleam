@@ -6,7 +6,7 @@
     </requirements>
 
     <command><![CDATA[
-        mkdir -p "$pwd/hf_cache" &&
+        mkdir -p "./hf_cache" &&
         export TRANSFORMERS_CACHE="./hf_cache" &&
         python $__tool_directory__/pytorch_embedding.py 
         --zip_file "$input_zip"
