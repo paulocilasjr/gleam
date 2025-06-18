@@ -2,7 +2,7 @@
     <description>Tile pathology images using PyHIST in parallel</description>
 
     <requirements>
-        <container type="docker">pyhist-custom:latest</container>
+        <container type="docker">quay.io/goeckslab/galaxy-tiler:latest</container>
     </requirements>
 
     <command><![CDATA[
