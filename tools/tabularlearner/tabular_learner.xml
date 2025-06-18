@@ -1,4 +1,4 @@
-<tool id="pycaret_compare" name="Tabular Learner" version="@VERSION@" profile="@PROFILE@">
+<tool id="tabular_learner" name="Tabular Learner" version="@TABULAR_LEARNER_VERSION@" profile="@PROFILE@">
     <description>applies and evaluates multiple machine learning models on a tabular dataset</description>
     <macros>
         <import>pycaret_macros.xml</import>
