@@ -49,16 +49,6 @@ except OSError as e:
     logging.error(f"Failed to create cache directory {cache_dir}: {e}")
     raise
 
-# Set environment variables for cache directories before any model loading
-os.environ['TORCH_HOME'] = cache_dir
-os.environ['TRANSFORMERS_CACHE'] = cache_dir
-os.environ['HF_HOME'] = cache_dir  # Additional Hugging Face cache variable
-# Set torch.hub cache directory
-torch.hub.set_dir(cache_dir)
-logging.info(f"Set cache directories: TORCH_HOME={os.environ['TORCH_HOME']}, "
-             f"TRANSFORMERS_CACHE={os.environ['TRANSFORMERS_CACHE']}, "
-             f"HF_HOME={os.environ['HF_HOME']}")
-
 # Available models from torchvision
 AVAILABLE_MODELS = {
     name: getattr(models, name)

@@ -6,6 +6,10 @@
     </requirements>
 
     <command><![CDATA[
+        export TRANSFORMERS_CACHE="$PWD/hf_cache" &&
+        export TORCH_HOME="$PWD/hf_cache" &&
+        export HF_HOME="$PWD/hf_cache" &&
+        mkdir -p "$PWD/hf_cache" &&
         python $__tool_directory__/pytorch_embedding.py 
         --zip_file '$input_zip' 
         --output_csv '$output_csv'
