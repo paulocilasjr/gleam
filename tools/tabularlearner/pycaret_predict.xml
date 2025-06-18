@@ -1,4 +1,4 @@
-<tool id="pycaret_predict" name="PyCaret Predictor/Evaluator" version="@VERSION@" profile="@PROFILE@">
+<tool id="pycaret_predict" name="PyCaret Predictor/Evaluator" version="@PYCARET_PREDICT_VERSION@" profile="@PROFILE@">
     <description>predicts/evaluates your pycaret ML model on a dataset. </description>
     <macros>
         <import>pycaret_macros.xml</import>
