@@ -7,7 +7,8 @@
 
     <command><![CDATA[
         mkdir -p "./hf_cache" &&
-        export TRANSFORMERS_CACHE="./hf_cache" &&
+        export HF_HOME="./hf_cache" &&
+        export TORCH_HOME="./hf_cache" &&
         python $__tool_directory__/pytorch_embedding.py 
         --zip_file "$input_zip"
         --output_csv "$output_csv"
