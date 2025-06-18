@@ -1,5 +1,4 @@
 import argparse
-import gc
 import logging
 import os
 import shutil
@@ -10,14 +9,10 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Tuple
 
-import numpy
 import openslide
-import pandas
 import psutil
 import torch
-import torch.nn
 from pyhist import PySlide, TileGenerator
-
 from src import utility_functions
 
 # Configure logging to stdout
