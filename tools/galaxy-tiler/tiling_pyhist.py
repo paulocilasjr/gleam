@@ -9,9 +9,15 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Tuple
 
+import fastparquet
+import numpy
 import openslide
+import pandas
 import psutil
+import torch
+import torch.nn
 from pyhist import PySlide, TileGenerator
+
 from src import utility_functions
 
 # Configure logging to stdout
