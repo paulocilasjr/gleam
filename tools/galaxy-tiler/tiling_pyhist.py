@@ -11,7 +11,6 @@ from typing import Tuple
 
 import openslide
 import psutil
-import torch
 from pyhist import PySlide, TileGenerator
 from src import utility_functions
 
