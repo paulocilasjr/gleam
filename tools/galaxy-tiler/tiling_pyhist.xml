@@ -2,9 +2,12 @@
     <description>Tile pathology images using PyHIST in parallel</description>
 
     <requirements>
-        <container type="docker">pyhist-custom:latest</container>
+        <container type="docker">quay.io/goeckslab/galaxy-tiler:latest</container>
     </requirements>
-
+    <stdio>
+        <exit_code range="137" level="fatal_oom" description="Out of Memory" />
+        <exit_code range="1:" level="fatal" description="Error occurred. Please check Tool Standard Error" />
+    </stdio>
     <command><![CDATA[
         python "$__tool_directory__/tiling_pyhist.py"
         #for $i, $img in enumerate($input_collection)
@@ -21,7 +24,16 @@
     <outputs>
         <data name="output_zip" format="zip" label="Image Tiles (zip)" />
     </outputs>
-
+    <tests>
+        <test name="test_tiling_pyhist_single_image">
+            <param name="input_collection">
+                <collection type="list">
+                    <element name="sample1" file="test_image.svs" ftype="svs"/>
+                </collection>
+            </param>
+            <output name="output_zip" file="expected_output.zip" compare="sim_size" delta="50000"/>
+        </test>
+    </tests>
     <help><![CDATA[
         **Tile Images with PyHIST**
 

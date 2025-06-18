@@ -7,12 +7,11 @@ import sys
 import zipfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import List, Tuple
+from typing import Tuple
 
 import openslide
 import psutil
 from pyhist import PySlide, TileGenerator
-
 from src import utility_functions
 
 # Configure logging to stdout
@@ -44,7 +43,7 @@ def log_memory_usage() -> None:
 def validate_slide(image_path: Path) -> None:
     """Validate the input image using OpenSlide."""
     try:
-        with openslide.OpenSlide(str(image_path)) as slide:
+        with openslide.OpenSlide(str(image_path)):
             logging.info("Validated input file with OpenSlide: %s", image_path)
     except openslide.OpenSlideError as error:
         raise RuntimeError("Invalid input file: %s", error) from error
