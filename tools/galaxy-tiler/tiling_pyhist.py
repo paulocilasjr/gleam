@@ -1,4 +1,5 @@
 import argparse
+import gc
 import logging
 import os
 import shutil
@@ -9,7 +10,6 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Tuple
 
-import fastparquet
 import numpy
 import openslide
 import pandas
