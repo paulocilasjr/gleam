@@ -73,8 +73,8 @@
     </outputs>
     <tests>
         <test>
-            <param name="embeddings_csv" value="100_digits_embeddings.csv" />
-            <param name="metadata_csv" value="100_digits_metadata.csv" />
+            <param name="embeddings_csv" value="test-data/test_embeddings.csv" />
+            <param name="metadata_csv" value="test-data/test_metadata.csv" />
             <param name="split_proportions" value="0.7,0.2,0.1" />
             <param name="bag_size" value="3-5" />
             <param name="pooling_method" value="mean_pooling" />
