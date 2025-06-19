@@ -1,20 +1,7 @@
 categories:
   - Machine Learning
   - Image Processing
-name: galaxy_tiler
 owner: goeckslab
-long_description: |
-  The Tiler tool enables automated tiling of whole slide images (WSIs) within the Galaxy platform,
-  leveraging the PyHIST library to generate high-resolution image tiles suitable for training
-  machine learning models. This process increases sample granularity and model robustness by
-  transforming large pathology images into structured, labeled subsets.
-
-  Designed for digital pathology and biomedical imaging workflows, Tiler supports configurable
-  parameters such as tile size, overlap, tissue thresholding, and background filtering.
-  By producing high-quality tiles from WSIs, this tool facilitates downstream tasks such as
-  image classification, multiple instance learning, and segmentation model training.
-  Its integration into Galaxy provides a reproducible, code-free interface for researchers
-
 remote_repository_url: https://github.com/goeckslab/gleam.git
 homepage_url: https://github.com/goeckslab/gleam/tree/main/tools/tiler
 
@@ -24,13 +11,3 @@ auto_tool_repositories:
 suite:
   name: suite_tiler
   description: A Galaxy tool for tiling whole slide images using PyHIST.
-  long_description: |
-    The Tiler tool processes whole slide images (WSIs) to generate uniformly sized image tiles,
-    enabling more efficient and effective training of deep learning models. Built on PyHIST,
-    it includes support for tissue detection, tile filtering, and customization of tile dimensions,
-    overlap, and magnification levels.
-
-    This tool is optimized for use in digital pathology and biomedical image analysis pipelines,
-    helping users overcome the computational and modeling challenges posed by large image files.
-    Its intuitive Galaxy interface makes it accessible for both computational researchers and
-    domain experts in histopathology.
