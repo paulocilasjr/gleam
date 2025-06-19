@@ -142,5 +142,4 @@
         - A CSV file with bags of embeddings, including labels, split information, and processed embedding vectors.
         ]]>
     </help>
-    <expand macro="macro_citations" />
 </tool>
