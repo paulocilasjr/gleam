@@ -47,22 +47,17 @@ Usage:
     [--imbalance_cap <percentage>] [--truncate_bags] [--use_gpu]
 """
 
-
-import gc
 import argparse
+import gc
 import logging
 import multiprocessing as mp
 import os
 import tempfile
 
 import numpy as np
-
 import pandas as pd
-
 import torch
 import torch.nn as nn
-
-import fastparquet
 
 
 def parse_bag_size(bag_size_str):
