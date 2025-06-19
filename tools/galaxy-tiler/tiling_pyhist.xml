@@ -28,7 +28,7 @@
         <test>
             <param name="input_collection">
                 <collection type="list">
-                    <element name="sample1" ftype="svs">test_image.svs</element>
+                    <element name="sample1" ftype="svs" file="test_image.svs" />
                 </collection>
             </param>
             <output name="output_zip" file="expected_output.zip" compare="sim_size" delta="10000"/>
