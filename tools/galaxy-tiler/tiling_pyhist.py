@@ -8,6 +8,7 @@ import zipfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Tuple
+import tempfile  # Added for temporary directory
 
 import openslide
 import psutil
@@ -162,8 +163,7 @@ def process_single_image(task: Tuple[Path, str, Path]) -> Path:
 
 
 def get_max_workers() -> int:
-    """Determine the maximum number of worker processes based on
-    available resources."""
+    """Determine the maximum number of worker processes based on available resources."""
     cpu_cores = psutil.cpu_count(logical=False)  # Physical CPU cores
     available_memory = psutil.virtual_memory().available / (1024 ** 3)  # in GB
     max_workers_memory = available_memory // MEMORY_PER_WORKER
@@ -195,9 +195,8 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Main function to orchestrate tile extraction and
-    ZIP creation with dynamic multiprocessing."""
-    os.chdir("/pyhist")
+    """Main function to orchestrate tile extraction and ZIP creation with dynamic multiprocessing."""
+    # Removed os.chdir("/pyhist") to stay in Galaxy's working directory
     logging.info("Working directory: %s", os.getcwd())
 
     args = parse_arguments()
@@ -205,36 +204,33 @@ def main() -> None:
     if len(args.input) != len(args.original_name):
         raise ValueError("Mismatch between input paths and original names")
 
-    # Create a temporary directory for tile storage
-    temp_dir = Path("temp_tiles")
-    temp_dir.mkdir(exist_ok=True)
+    # Create a temporary directory using tempfile
+    with tempfile.TemporaryDirectory(prefix="pyhist_tiles_", dir=os.getcwd()) as temp_dir_path:
+        temp_dir = Path(temp_dir_path)
+        logging.info("Created temporary directory: %s", temp_dir)
 
-    # Prepare tasks with unique output directories
-    tasks = [
-        (Path(image_path), original_name, temp_dir / Path(original_name).stem)
-        for image_path, original_name in zip(args.input, args.original_name)
-    ]
+        # Prepare tasks with unique output directories
+        tasks = [
+            (Path(image_path), original_name, temp_dir / Path(original_name).stem)
+            for image_path, original_name in zip(args.input, args.original_name)
+        ]
 
-    # Determine the number of worker processes based on available resources
-    max_workers = get_max_workers()
-    logging.info("Using %d worker processes", max_workers)
+        # Determine the number of worker processes based on available resources
+        max_workers = get_max_workers()
+        logging.info("Using %d worker processes", max_workers)
 
-    # Process images in parallel
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        tile_dirs = list(executor.map(process_single_image, tasks))
+        # Process images in parallel
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            tile_dirs = list(executor.map(process_single_image, tasks))
 
-    # Create the ZIP file and append all tiles
-    with zipfile.ZipFile(args.output_zip, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for (image_path, original_name, output_dir), tile_dir in zip(tasks, tile_dirs):
-            append_tiles_to_zip(zip_file, original_name, tile_dir)
+        # Create the ZIP file and append all tiles
+        with zipfile.ZipFile(args.output_zip, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for (image_path, original_name, output_dir), tile_dir in zip(tasks, tile_dirs):
+                append_tiles_to_zip(zip_file, original_name, tile_dir)
 
-    # Clean up temporary files
-    shutil.rmtree(temp_dir, ignore_errors=True)
-    logging.info("Temporary files cleaned up")
-    logging.info(
-        "Final ZIP size: %d bytes",
-        Path(args.output_zip).stat().st_size
-    )
+        logging.info("Final ZIP size: %d bytes", Path(args.output_zip).stat().st_size)
+    # No need for shutil.rmtree as TemporaryDirectory cleans up automatically
+    logging.info("Temporary directory cleaned up")
 
 
 if __name__ == "__main__":
