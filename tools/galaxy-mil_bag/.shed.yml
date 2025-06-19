@@ -1,19 +1,6 @@
 categories:
   - Machine Learning
-description: Multiple Instance Learning (MIL) tool for creating and pooling bags from tabular data
-name: galaxy_mil_bag
 owner: goeckslab
-long_description: |
-  The MIL Bag tool enables Multiple Instance Learning within the Galaxy platform by constructing
-  instance bags from tabular data—typically embedding vectors—and applying various pooling strategies
-  to summarize information. It supports multiple pooling methods, including max, min, first-instance,
-  attention-based, and others, allowing users to tailor aggregation to specific learning tasks.
-
-  This tool is designed to bridge instance-level and bag-level learning in applications such as
-  weak supervision, biomedical outcome prediction, and image patch aggregation. Its user-friendly
-  interface makes it accessible for researchers without requiring custom code, while offering 
-  flexibility for advanced experimentation. MIL Bag provides a foundation for scalable and interpretable
-  learning in contexts where label granularity is limited.
 remote_repository_url: https://github.com/goeckslab/gleam.git
 homepage_url: https://github.com/goeckslab/gleam/tree/main/tools/mil_bag
 
@@ -23,12 +10,3 @@ auto_tool_repositories:
 suite:
   name: suite_mil_bag
   description: A Galaxy tool for Multiple Instance Learning with configurable pooling strategies.
-  long_description: |
-    The MIL Bag tool enables bag-level modeling from instance-level data using Multiple Instance Learning (MIL)
-    techniques. Built for Galaxy, it allows users to generate bags from tabular inputs and apply a range of
-    pooling functions—such as max, min, first-instance, and attention—to produce bag-level representations
-    suitable for downstream supervised learning tasks.
-
-    MIL Bag is particularly useful for domains like biomedical informatics, where individual samples (e.g.,
-    image patches, molecular features) contribute collectively to patient-level labels. This tool lowers
-    the barrier to deploying MIL workflows by abstracting core steps into a modular, GUI-driven interface.
