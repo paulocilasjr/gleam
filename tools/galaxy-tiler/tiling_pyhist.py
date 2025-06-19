@@ -3,10 +3,10 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
 import zipfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-import tempfile
 from typing import Tuple
 
 import openslide
