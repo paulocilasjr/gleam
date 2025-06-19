@@ -1,4 +1,4 @@
-<tool id="bagging_tool" name="Bagging Embeddings Processor" version="0.0.1+0">
+<tool id="bagging_tool" name="Bagging Embeddings Processor" version="1.0.0+0">
     <description>Process CSV files to create bags of embeddings for machine learning</description>
     <requirements>
         <container type="docker">quay.io/goeckslab/milbag:0.1</container>
