@@ -1,0 +1,12 @@
+categories:
+  - Machine Learning
+owner: goeckslab
+remote_repository_url: https://github.com/goeckslab/gleam.git
+homepage_url: https://github.com/goeckslab/gleam/tree/main/tools/mil_bag
+
+auto_tool_repositories:
+  name_template: "{{ tool_id }}"
+  description_template: "MIL tool to create and pool bags from tabular data using various strategies"
+suite:
+  name: suite_mil_bag
+  description: A Galaxy tool for Multiple Instance Learning with configurable pooling strategies.
