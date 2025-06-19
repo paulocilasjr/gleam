@@ -2,7 +2,7 @@
     <description>Tile pathology images using PyHIST in parallel</description>
 
     <requirements>
-        <container type="docker">quay.io/goeckslab/galaxy-tiler:latest</container>
+        <container type="docker">quay.io/goeckslab/galaxy-tiler:1.0.0</container>
     </requirements>
     <stdio>
         <exit_code range="137" level="fatal_oom" description="Out of Memory" />
