@@ -1,14 +1,13 @@
 import argparse
 import logging
 import os
-import shutil
 import subprocess
 import sys
 import zipfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+import tempfile
 from typing import Tuple
-import tempfile  # Added for temporary directory
 
 import openslide
 import psutil
