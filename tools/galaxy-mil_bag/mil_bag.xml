@@ -1,7 +1,7 @@
 <tool id="bagging_tool" name="Bagging Embeddings Processor" version="1.0.0+0">
     <description>Process CSV files to create bags of embeddings for machine learning</description>
     <requirements>
-        <container type="docker">quay.io/goeckslab/milbag:0.1</container>
+        <container type="docker">quay.io/goeckslab/milbag:1.0.0</container>
     </requirements>
     <stdio>
         <exit_code range="137" level="fatal_oom" description="Out of Memory" />
