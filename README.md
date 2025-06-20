@@ -1,9 +1,6 @@
 [![Galaxy Tool Linting and Tests for push and PR](https://github.com/goeckslab/gleam/actions/workflows/pr.yaml/badge.svg?branch=main)](https://github.com/goeckslab/gleam/actions/workflows/pr.yaml/badge.svg)
 [![Weekly global Tool Linting and Tests](https://github.com/goeckslab/gleam/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/goeckslab/gleam/actions/workflows/ci.yaml/badge.svg)
 
-# Galaxy tool repository template
-
-
 # GLEAM: Galaxy Learning and Modeling
 
 GLEAM (Galaxy Learning and Modeling) is a suite of machine learning tools for the [Galaxy](https://usegalaxy.org/) platform. Developed by the [Goecks Lab](https://goeckslab.org/), GLEAM empowers researchers to train models, generate predictions, and produce reproducible reports—all from a user-friendly interface without writing code.
