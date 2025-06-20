@@ -1,6 +1,5 @@
 categories:
   - Machine Learning
-  - Image Processing
 owner: goeckslab
 remote_repository_url: https://github.com/goeckslab/gleam.git
 homepage_url: https://github.com/goeckslab/gleam/tree/main/tools/tiler
