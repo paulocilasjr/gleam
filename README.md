@@ -1,5 +1,5 @@
 [![Galaxy Tool Linting and Tests for push and PR](https://github.com/goeckslab/gleam/actions/workflows/pr.yaml/badge.svg?branch=main)](https://github.com/goeckslab/gleam/actions/workflows/pr.yaml/badge.svg)
-
+[![Weekly global Tool Linting and Tests](https://github.com/goeckslab/gleam/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/goeckslab/gleam/actions/workflows/ci.yaml/badge.svg)
 
 # GLEAM: Galaxy Learning and Modeling
 

@@ -42,7 +42,7 @@ See [documentation](https://docs.galaxyproject.org/en/master/admin/jobs.html#run
 This step is optional.
 If you want to speed up your runs, execute the following command:
 ```
-docker pull quay.io/goeckslab/galaxy-ludwig:0.10.3
+docker pull quay.io/goeckslab/galaxy-ludwig-gpu:0.10.1
 ```
 
 * Should be good to go. 
