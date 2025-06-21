@@ -252,12 +252,12 @@ class BaseModelTrainer:
 
         html_content = f"""
         {get_html_template()}
-            <h1>PyCaret Model Training Report</h1>
+            <h1>Tabular Learner Model Report</h1>
             <div class="tabs">
                 <div class="tab" onclick="openTab(event, 'summary')">
-                Setup & Best Model</div>
+                Validation Set Metrics and Models Comparison</div>
                 <div class="tab" onclick="openTab(event, 'plots')">
-                Best Model Plots</div>
+                Test Set Metrics and Plots</div>
                 <div class="tab" onclick="openTab(event, 'feature')">
                 Feature Importance</div>
         """
@@ -269,6 +269,17 @@ class BaseModelTrainer:
         html_content += f"""
             </div>
             <div id="summary" class="tab-content">
+                <h2>Model Metrics from Cross-Validation Set</h2>
+                <h2>Best Model: {model_name}</h2>
+                <h5>The best model is selected by: Accuracy (Classification)
+                or R2 (Regression).</h5>
+                {self.results.to_html(index=False, classes='table sortable')}
+                <h2>Best Model's Hyperparameters</h2>
+                {best_model_params.to_html(
+                    index=False,
+                    header=True,
+                    classes='table sortable'
+                )}
                 <h2>Setup Parameters</h2>
                 {setup_params_table.to_html(
                     index=False,
@@ -278,22 +289,18 @@ class BaseModelTrainer:
                 <h5>If you want to know all the experiment setup parameters,
                   please check the PyCaret documentation for
                   the classification/regression <code>exp</code> function.</h5>
+            </div>
+            <div id="plots" class="tab-content">
                 <h2>Best Model: {model_name}</h2>
-                {best_model_params.to_html(
-                    index=False,
-                    header=True,
-                    classes='table sortable'
-                )}
-                <h2>Comparison Results on the Cross-Validation Set</h2>
-                {self.results.to_html(index=False, classes='table sortable')}
-                <h2>Results on the Test Set for the best model</h2>
+                <h5>The best model is selected by: Accuracy (Classification)
+                or R2 (Regression).</h5>
+                <h2>Test Metrics</h2>
                 {self.test_result_df.to_html(
                     index=False,
                     classes='table sortable'
                 )}
-            </div>
-            <div id="plots" class="tab-content">
-                <h2>Best Model Plots on the testing set</h2>
+
+                <h2>Test Plots</h2>
                 {plots_html}
             </div>
             <div id="feature" class="tab-content">
