@@ -309,7 +309,7 @@ class BaseModelTrainer:
                 <h2>Test Metrics</h2>
                 {self.test_result_df.to_html(index=False)}
 
-                <h2>Test Results</h2>
+                <h2>Test Plots</h2>
                 {plots_html}
             </div>
             <div id="feature" class="tab-content">
