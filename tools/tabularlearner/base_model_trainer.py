@@ -277,7 +277,7 @@ class BaseModelTrainer:
                 <div class="tab" onclick="openTab(event, 'summary')">
                 Validation Result & Config</div>
                 <div class="tab" onclick="openTab(event, 'plots')">
-                Test Results</div>
+                Test Result</div>
                 <div class="tab" onclick="openTab(event, 'feature')">
                 Feature Importance</div>
         """
