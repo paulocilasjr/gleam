@@ -1,106 +1,40 @@
-# Galaxy-Pycaret
-A library of Galaxy machine learning tools based on PyCaret — part of the Galaxy ML2 tools, aiming to provide simple, powerful, and robust machine learning capabilities for Galaxy users.
+# Tabular Learner Tools
 
-# Install Galaxy-Pycaret into Galaxy
+This repository contains two machine learning tools for working with tabular data in the Gleam framework:
 
-* Update `tool_conf.xml` to include Galaxy-Pycaret tools. See [documentation](https://docs.galaxyproject.org/en/master/admin/tool_panel.html) for more details. This is an example:
-```
-<section id="pycaret" name="Pycaret Applications">
-  <tool file="galaxy-pycaret/tools/pycaret_train.xml" />
-</section>
-```
+## 1. Tabular Learner
 
-* Configure the `job_conf.yml` under `lib/galaxy/config/sample` to enable the docker for the environment you want the Ludwig related job running in. This is an example:
-```
-execution:
- default: local
- environments:
-   local:
-     runner: local
-     docker_enabled: true
-```
-If you are using an older version of Galaxy, then `job_conf.xml` would be something you want to configure instead of `job_conf.yml`. Then you would want to configure destination instead of execution and environment. 
-See [documentation](https://docs.galaxyproject.org/en/master/admin/jobs.html#running-jobs-in-containers) for job_conf configuration. 
-* If you haven’t set `sanitize_all_html: false` in `galaxy.yml`, please set it to False to enable our HTML report functionality.
-* Should be good to go. 
+A comprehensive tool for training and evaluating multiple machine learning models on tabular datasets.
 
-# Make contributions
+### Features:
+- Supports both classification and regression tasks
+- Automatically compares multiple algorithms to find the best model
+- Extensive customization options:
+  - Data normalization
+  - Feature selection
+  - Cross-validation
+  - Outlier removal
+  - Multicollinearity handling
+  - Polynomial feature generation
+  - Class imbalance correction
+- Outputs detailed HTML reports with performance metrics and visualizations
+- Saves the best model for later use
 
-## Getting Started
+## 2. PyCaret Predictor/Evaluator
 
-To get started, you’ll need to fork the repository, clone it locally, and create a new branch for your contributions.
+A companion tool for making predictions and evaluating trained models on new data.
 
-1. **Fork the Repository**: Click the "Fork" button at the top right of this page.
-2. **Clone the Fork**:
-  ```bash
-    git clone https://github.com/<your-username>/Galaxy-Pycaret.git
-    cd <your-repo>
-  ```
-3. **Create a Feature/hotfix/bugfix Branch**:
-  ```bash
-    git checkout -b feature/<feature-branch-name>
-  ```
-  or
-  ```bash
-    git checkout -b hotfix/<hoxfix-branch-name>
-  ```
-  or
-  ```bash
-    git checkout -b bugfix/<bugfix-branch-name>
-  ```
+### Features:
+- Works with models trained by Tabular Learner
+- Supports both classification and regression tasks
+- Generates predictions on new data
+- Creates evaluation reports when target values are provided
+- Outputs predictions in CSV format
 
-## How We Manage the Repo
+## Workflow
 
-We follow a structured branching and merging strategy to ensure code quality and stability.
+These tools are designed to work together:
+1. Use **Tabular Learner** to train and find the best model for your dataset
+2. Use **PyCaret Predictor/Evaluator** to apply your trained model to new data
 
-1. **Main Branches**:
-   - **`main`**: Contains production-ready code.
-   - **`dev`**: Contains code that is ready for the next release.
-
-2. **Supporting Branches**:
-   - **Feature Branches**: Created from `dev` for new features.
-   - **Bugfix Branches**: Created from `dev` for bug fixes.
-   - **Release Branches**: Created from `dev` when preparing a new release.
-   - **Hotfix Branches**: Created from `main` for critical fixes in production. 
-
-### Workflow
-
-- **Feature Development**: 
-  - Branch from `dev`.
-  - Work on your feature.
-  - Submit a Pull Request (PR) to `dev`.
-- **Hotfixes**: 
-  - Branch from `main`.
-  - Fix the issue.
-  - Merge back into both `main` and `dev`.
-
-## Contribution Guidelines
-
-We welcome contributions of all kinds. To make contributions easy and effective, please follow these guidelines:
-
-1. **Create an Issue**: Before starting work on a major change, create an issue to discuss it.
-2. **Fork and Branch**: Fork the repo and create a feature branch.
-3. **Write Tests**: Ensure your changes are well-tested if applicable.
-4. **Code Style**: Follow the project’s coding conventions.
-5. **Commit Messages**: Write clear and concise commit messages.
-6. **Pull Request**: Submit a PR to the `dev` branch. Ensure your PR description is clear and includes the issue number.
-
-### Submitting a Pull Request
-
-1. **Push your Branch**:
-    ```bash
-    git push origin feature/<feature-branch-name>
-    ```
-2. **Open a Pull Request**:
-   - Navigate to the original repository where you created your fork.
-   - Click on the "New Pull Request" button.
-   - Select `dev` as the base branch and your feature branch as the compare branch. 
-   - Fill in the PR template with details about your changes.
-
-3. **Rebase or Merge `dev` into Your Feature Branch**:
-    - Before submitting your PR or when `dev` has been updated, rebase or merge `dev` into your feature branch to ensure your branch is up to date:
-    
-4. **Resolve Conflicts**:
-    - If there are any conflicts during the rebase or merge, Git will pause and allow you to resolve the conflicts.
-
-5. **Review Process**: Your PR will be reviewed by a team member. Please address any feedback and update your PR as needed.
+Both tools are powered by [PyCaret](https://pycaret.org/), an open-source machine learning library that automates the ML workflow.
