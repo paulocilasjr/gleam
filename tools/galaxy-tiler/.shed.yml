@@ -1,0 +1,12 @@
+categories:
+  - Machine Learning
+owner: goeckslab
+remote_repository_url: https://github.com/goeckslab/gleam.git
+homepage_url: https://github.com/goeckslab/gleam/tree/main/tools/tiler
+
+auto_tool_repositories:
+  name_template: "{{ tool_id }}"
+  description_template: "WSI tiling tool using PyHIST for deep learning-ready image patches"
+suite:
+  name: suite_tiler
+  description: A Galaxy tool for tiling whole slide images using PyHIST.
