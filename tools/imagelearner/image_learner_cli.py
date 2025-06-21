@@ -10,7 +10,6 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Protocol, Tuple
 
-import numpy as np
 import pandas as pd
 import yaml
 from ludwig.globals import (
@@ -25,89 +24,89 @@ from sklearn.model_selection import train_test_split
 from utils import encode_image_to_base64, get_html_closing, get_html_template
 
 # --- Constants ---
-SPLIT_COLUMN_NAME = 'split'
-LABEL_COLUMN_NAME = 'label'
-IMAGE_PATH_COLUMN_NAME = 'image_path'
+SPLIT_COLUMN_NAME = "split"
+LABEL_COLUMN_NAME = "label"
+IMAGE_PATH_COLUMN_NAME = "image_path"
 DEFAULT_SPLIT_PROBABILITIES = [0.7, 0.1, 0.2]
 TEMP_CSV_FILENAME = "processed_data_for_ludwig.csv"
 TEMP_CONFIG_FILENAME = "ludwig_config.yaml"
 TEMP_DIR_PREFIX = "ludwig_api_work_"
 MODEL_ENCODER_TEMPLATES: Dict[str, Any] = {
-    'stacked_cnn': 'stacked_cnn',
-    'resnet18': {'type': 'resnet', 'model_variant': 18},
-    'resnet34': {'type': 'resnet', 'model_variant': 34},
-    'resnet50': {'type': 'resnet', 'model_variant': 50},
-    'resnet101': {'type': 'resnet', 'model_variant': 101},
-    'resnet152': {'type': 'resnet', 'model_variant': 152},
-    'resnext50_32x4d': {'type': 'resnext', 'model_variant': '50_32x4d'},
-    'resnext101_32x8d': {'type': 'resnext', 'model_variant': '101_32x8d'},
-    'resnext101_64x4d': {'type': 'resnext', 'model_variant': '101_64x4d'},
-    'resnext152_32x8d': {'type': 'resnext', 'model_variant': '152_32x8d'},
-    'wide_resnet50_2': {'type': 'wide_resnet', 'model_variant': '50_2'},
-    'wide_resnet101_2': {'type': 'wide_resnet', 'model_variant': '101_2'},
-    'wide_resnet103_2': {'type': 'wide_resnet', 'model_variant': '103_2'},
-    'efficientnet_b0': {'type': 'efficientnet', 'model_variant': 'b0'},
-    'efficientnet_b1': {'type': 'efficientnet', 'model_variant': 'b1'},
-    'efficientnet_b2': {'type': 'efficientnet', 'model_variant': 'b2'},
-    'efficientnet_b3': {'type': 'efficientnet', 'model_variant': 'b3'},
-    'efficientnet_b4': {'type': 'efficientnet', 'model_variant': 'b4'},
-    'efficientnet_b5': {'type': 'efficientnet', 'model_variant': 'b5'},
-    'efficientnet_b6': {'type': 'efficientnet', 'model_variant': 'b6'},
-    'efficientnet_b7': {'type': 'efficientnet', 'model_variant': 'b7'},
-    'efficientnet_v2_s': {'type': 'efficientnet', 'model_variant': 'v2_s'},
-    'efficientnet_v2_m': {'type': 'efficientnet', 'model_variant': 'v2_m'},
-    'efficientnet_v2_l': {'type': 'efficientnet', 'model_variant': 'v2_l'},
-    'regnet_y_400mf': {'type': 'regnet', 'model_variant': 'y_400mf'},
-    'regnet_y_800mf': {'type': 'regnet', 'model_variant': 'y_800mf'},
-    'regnet_y_1_6gf': {'type': 'regnet', 'model_variant': 'y_1_6gf'},
-    'regnet_y_3_2gf': {'type': 'regnet', 'model_variant': 'y_3_2gf'},
-    'regnet_y_8gf': {'type': 'regnet', 'model_variant': 'y_8gf'},
-    'regnet_y_16gf': {'type': 'regnet', 'model_variant': 'y_16gf'},
-    'regnet_y_32gf': {'type': 'regnet', 'model_variant': 'y_32gf'},
-    'regnet_y_128gf': {'type': 'regnet', 'model_variant': 'y_128gf'},
-    'regnet_x_400mf': {'type': 'regnet', 'model_variant': 'x_400mf'},
-    'regnet_x_800mf': {'type': 'regnet', 'model_variant': 'x_800mf'},
-    'regnet_x_1_6gf': {'type': 'regnet', 'model_variant': 'x_1_6gf'},
-    'regnet_x_3_2gf': {'type': 'regnet', 'model_variant': 'x_3_2gf'},
-    'regnet_x_8gf': {'type': 'regnet', 'model_variant': 'x_8gf'},
-    'regnet_x_16gf': {'type': 'regnet', 'model_variant': 'x_16gf'},
-    'regnet_x_32gf': {'type': 'regnet', 'model_variant': 'x_32gf'},
-    'vgg11': {'type': 'vgg', 'model_variant': 11},
-    'vgg11_bn': {'type': 'vgg', 'model_variant': '11_bn'},
-    'vgg13': {'type': 'vgg', 'model_variant': 13},
-    'vgg13_bn': {'type': 'vgg', 'model_variant': '13_bn'},
-    'vgg16': {'type': 'vgg', 'model_variant': 16},
-    'vgg16_bn': {'type': 'vgg', 'model_variant': '16_bn'},
-    'vgg19': {'type': 'vgg', 'model_variant': 19},
-    'vgg19_bn': {'type': 'vgg', 'model_variant': '19_bn'},
-    'shufflenet_v2_x0_5': {'type': 'shufflenet_v2', 'model_variant': 'x0_5'},
-    'shufflenet_v2_x1_0': {'type': 'shufflenet_v2', 'model_variant': 'x1_0'},
-    'shufflenet_v2_x1_5': {'type': 'shufflenet_v2', 'model_variant': 'x1_5'},
-    'shufflenet_v2_x2_0': {'type': 'shufflenet_v2', 'model_variant': 'x2_0'},
-    'squeezenet1_0': {'type': 'squeezenet', 'model_variant': '1_0'},
-    'squeezenet1_1': {'type': 'squeezenet', 'model_variant': '1_1'},
-    'swin_t': {'type': 'swin_transformer', 'model_variant': 't'},
-    'swin_s': {'type': 'swin_transformer', 'model_variant': 's'},
-    'swin_b': {'type': 'swin_transformer', 'model_variant': 'b'},
-    'swin_v2_t': {'type': 'swin_transformer', 'model_variant': 'v2_t'},
-    'swin_v2_s': {'type': 'swin_transformer', 'model_variant': 'v2_s'},
-    'swin_v2_b': {'type': 'swin_transformer', 'model_variant': 'v2_b'},
-    'vit_b_16': {'type': 'vision_transformer', 'model_variant': 'b_16'},
-    'vit_b_32': {'type': 'vision_transformer', 'model_variant': 'b_32'},
-    'vit_l_16': {'type': 'vision_transformer', 'model_variant': 'l_16'},
-    'vit_l_32': {'type': 'vision_transformer', 'model_variant': 'l_32'},
-    'vit_h_14': {'type': 'vision_transformer', 'model_variant': 'h_14'},
-    'convnext_tiny': {'type': 'convnext', 'model_variant': 'tiny'},
-    'convnext_small': {'type': 'convnext', 'model_variant': 'small'},
-    'convnext_base': {'type': 'convnext', 'model_variant': 'base'},
-    'convnext_large': {'type': 'convnext', 'model_variant': 'large'},
-    'maxvit_t': {'type': 'maxvit', 'model_variant': 't'},
-    'alexnet': {'type': 'alexnet'},
-    'googlenet': {'type': 'googlenet'},
-    'inception_v3': {'type': 'inception_v3'},
-    'mobilenet_v2': {'type': 'mobilenet_v2'},
-    'mobilenet_v3_large': {'type': 'mobilenet_v3_large'},
-    'mobilenet_v3_small': {'type': 'mobilenet_v3_small'},
+    "stacked_cnn": "stacked_cnn",
+    "resnet18": {"type": "resnet", "model_variant": 18},
+    "resnet34": {"type": "resnet", "model_variant": 34},
+    "resnet50": {"type": "resnet", "model_variant": 50},
+    "resnet101": {"type": "resnet", "model_variant": 101},
+    "resnet152": {"type": "resnet", "model_variant": 152},
+    "resnext50_32x4d": {"type": "resnext", "model_variant": "50_32x4d"},
+    "resnext101_32x8d": {"type": "resnext", "model_variant": "101_32x8d"},
+    "resnext101_64x4d": {"type": "resnext", "model_variant": "101_64x4d"},
+    "resnext152_32x8d": {"type": "resnext", "model_variant": "152_32x8d"},
+    "wide_resnet50_2": {"type": "wide_resnet", "model_variant": "50_2"},
+    "wide_resnet101_2": {"type": "wide_resnet", "model_variant": "101_2"},
+    "wide_resnet103_2": {"type": "wide_resnet", "model_variant": "103_2"},
+    "efficientnet_b0": {"type": "efficientnet", "model_variant": "b0"},
+    "efficientnet_b1": {"type": "efficientnet", "model_variant": "b1"},
+    "efficientnet_b2": {"type": "efficientnet", "model_variant": "b2"},
+    "efficientnet_b3": {"type": "efficientnet", "model_variant": "b3"},
+    "efficientnet_b4": {"type": "efficientnet", "model_variant": "b4"},
+    "efficientnet_b5": {"type": "efficientnet", "model_variant": "b5"},
+    "efficientnet_b6": {"type": "efficientnet", "model_variant": "b6"},
+    "efficientnet_b7": {"type": "efficientnet", "model_variant": "b7"},
+    "efficientnet_v2_s": {"type": "efficientnet", "model_variant": "v2_s"},
+    "efficientnet_v2_m": {"type": "efficientnet", "model_variant": "v2_m"},
+    "efficientnet_v2_l": {"type": "efficientnet", "model_variant": "v2_l"},
+    "regnet_y_400mf": {"type": "regnet", "model_variant": "y_400mf"},
+    "regnet_y_800mf": {"type": "regnet", "model_variant": "y_800mf"},
+    "regnet_y_1_6gf": {"type": "regnet", "model_variant": "y_1_6gf"},
+    "regnet_y_3_2gf": {"type": "regnet", "model_variant": "y_3_2gf"},
+    "regnet_y_8gf": {"type": "regnet", "model_variant": "y_8gf"},
+    "regnet_y_16gf": {"type": "regnet", "model_variant": "y_16gf"},
+    "regnet_y_32gf": {"type": "regnet", "model_variant": "y_32gf"},
+    "regnet_y_128gf": {"type": "regnet", "model_variant": "y_128gf"},
+    "regnet_x_400mf": {"type": "regnet", "model_variant": "x_400mf"},
+    "regnet_x_800mf": {"type": "regnet", "model_variant": "x_800mf"},
+    "regnet_x_1_6gf": {"type": "regnet", "model_variant": "x_1_6gf"},
+    "regnet_x_3_2gf": {"type": "regnet", "model_variant": "x_3_2gf"},
+    "regnet_x_8gf": {"type": "regnet", "model_variant": "x_8gf"},
+    "regnet_x_16gf": {"type": "regnet", "model_variant": "x_16gf"},
+    "regnet_x_32gf": {"type": "regnet", "model_variant": "x_32gf"},
+    "vgg11": {"type": "vgg", "model_variant": 11},
+    "vgg11_bn": {"type": "vgg", "model_variant": "11_bn"},
+    "vgg13": {"type": "vgg", "model_variant": 13},
+    "vgg13_bn": {"type": "vgg", "model_variant": "13_bn"},
+    "vgg16": {"type": "vgg", "model_variant": 16},
+    "vgg16_bn": {"type": "vgg", "model_variant": "16_bn"},
+    "vgg19": {"type": "vgg", "model_variant": 19},
+    "vgg19_bn": {"type": "vgg", "model_variant": "19_bn"},
+    "shufflenet_v2_x0_5": {"type": "shufflenet_v2", "model_variant": "x0_5"},
+    "shufflenet_v2_x1_0": {"type": "shufflenet_v2", "model_variant": "x1_0"},
+    "shufflenet_v2_x1_5": {"type": "shufflenet_v2", "model_variant": "x1_5"},
+    "shufflenet_v2_x2_0": {"type": "shufflenet_v2", "model_variant": "x2_0"},
+    "squeezenet1_0": {"type": "squeezenet", "model_variant": "1_0"},
+    "squeezenet1_1": {"type": "squeezenet", "model_variant": "1_1"},
+    "swin_t": {"type": "swin_transformer", "model_variant": "t"},
+    "swin_s": {"type": "swin_transformer", "model_variant": "s"},
+    "swin_b": {"type": "swin_transformer", "model_variant": "b"},
+    "swin_v2_t": {"type": "swin_transformer", "model_variant": "v2_t"},
+    "swin_v2_s": {"type": "swin_transformer", "model_variant": "v2_s"},
+    "swin_v2_b": {"type": "swin_transformer", "model_variant": "v2_b"},
+    "vit_b_16": {"type": "vision_transformer", "model_variant": "b_16"},
+    "vit_b_32": {"type": "vision_transformer", "model_variant": "b_32"},
+    "vit_l_16": {"type": "vision_transformer", "model_variant": "l_16"},
+    "vit_l_32": {"type": "vision_transformer", "model_variant": "l_32"},
+    "vit_h_14": {"type": "vision_transformer", "model_variant": "h_14"},
+    "convnext_tiny": {"type": "convnext", "model_variant": "tiny"},
+    "convnext_small": {"type": "convnext", "model_variant": "small"},
+    "convnext_base": {"type": "convnext", "model_variant": "base"},
+    "convnext_large": {"type": "convnext", "model_variant": "large"},
+    "maxvit_t": {"type": "maxvit", "model_variant": "t"},
+    "alexnet": {"type": "alexnet"},
+    "googlenet": {"type": "googlenet"},
+    "inception_v3": {"type": "inception_v3"},
+    "mobilenet_v2": {"type": "mobilenet_v2"},
+    "mobilenet_v3_large": {"type": "mobilenet_v3_large"},
+    "mobilenet_v3_small": {"type": "mobilenet_v3_small"},
 }
 METRIC_DISPLAY_NAMES = {
     "accuracy": "Accuracy",
@@ -138,13 +137,13 @@ METRIC_DISPLAY_NAMES = {
 
 # --- Logging Setup ---
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(name)s: %(message)s'
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
 )
 logger = logging.getLogger("ImageLearner")
 
+
 def get_metrics_help_modal() -> str:
-    modal_html = '''
+    modal_html = """
 <div id="metricsHelpModal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
@@ -201,8 +200,8 @@ def get_metrics_help_modal() -> str:
     </div>
   </div>
 </div>
-'''
-    modal_css = '''
+"""
+    modal_css = """
 <style>
 .modal {
   display: none;
@@ -246,8 +245,8 @@ def get_metrics_help_modal() -> str:
   padding-left: 20px;
 }
 </style>
-'''
-    modal_js = '''
+"""
+    modal_js = """
 <script>
 var modal = document.getElementById("metricsHelpModal");
 var span = document.getElementsByClassName("close")[0];
@@ -263,14 +262,13 @@ function openMetricsHelp() {
   modal.style.display = "block";
 }
 </script>
-'''
+"""
     return modal_css + modal_html + modal_js
 
 
 def format_config_table_html(
-        config: dict,
-        split_info: Optional[str] = None,
-        training_progress: dict = None) -> str:
+    config: dict, split_info: Optional[str] = None, training_progress: dict = None
+) -> str:
     display_keys = [
         "model_name",
         "epochs",
@@ -293,9 +291,7 @@ def format_config_table_html(
                 if training_progress:
                     val = "Auto-selected batch size by Ludwig:<br>"
                     resolved_val = training_progress.get("batch_size")
-                    val += (
-                        f"<span style='font-size: 0.85em;'>{resolved_val}</span><br>"
-                    )
+                    val += f"<span style='font-size: 0.85em;'>{resolved_val}</span><br>"
                 else:
                     val = "auto"
         if key == "learning_rate":
@@ -324,7 +320,11 @@ def format_config_table_html(
             else:
                 val = f"{val:.6f}"
         if key == "epochs":
-            if training_progress and "epoch" in training_progress and val > training_progress["epoch"]:
+            if (
+                training_progress
+                and "epoch" in training_progress
+                and val > training_progress["epoch"]
+            ):
                 val = (
                     f"Because of early stopping: the training"
                     f"stopped at epoch {training_progress['epoch']}"
@@ -381,7 +381,9 @@ def detect_output_type(test_stats):
     return "category"
 
 
-def extract_metrics_from_json(train_stats: dict, test_stats: dict, output_type: str) -> dict:
+def extract_metrics_from_json(
+    train_stats: dict, test_stats: dict, output_type: str
+) -> dict:
     """Extracts relevant metrics from training and test statistics based on the output type.
 
     Args:
@@ -467,6 +469,7 @@ def extract_metrics_from_json(train_stats: dict, test_stats: dict, output_type: 
 
     return metrics
 
+
 def generate_table_row(cells, styles):
     """Helper function to generate an HTML table row.
 
@@ -477,7 +480,11 @@ def generate_table_row(cells, styles):
     Returns:
         str: HTML row string.
     """
-    return "<tr>" + "".join(f"<td style='{styles}'>{cell}</td>" for cell in cells) + "</tr>"
+    return (
+        "<tr>"
+        + "".join(f"<td style='{styles}'>{cell}</td>" for cell in cells)
+        + "</tr>"
+    )
 
 
 def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
@@ -494,8 +501,13 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
     all_metrics = extract_metrics_from_json(train_stats, test_stats, output_type)
     rows = []
     for metric_key in sorted(all_metrics["training"].keys()):
-        if metric_key in all_metrics["validation"] and metric_key in all_metrics["test"]:
-            display_name = METRIC_DISPLAY_NAMES.get(metric_key, metric_key.replace('_', ' ').title())
+        if (
+            metric_key in all_metrics["validation"]
+            and metric_key in all_metrics["test"]
+        ):
+            display_name = METRIC_DISPLAY_NAMES.get(
+                metric_key, metric_key.replace("_", " ").title()
+            )
             t = all_metrics["training"].get(metric_key)
             v = all_metrics["validation"].get(metric_key)
             te = all_metrics["test"].get(metric_key)
@@ -517,7 +529,10 @@ def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
         "</tr></thead><tbody>"
     )
     for row in rows:
-        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
+        html += generate_table_row(
+            row,
+            "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;",
+        )
     html += "</tbody></table></div><br>"
     return html
 
@@ -537,7 +552,9 @@ def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> st
     rows = []
     for metric_key in sorted(all_metrics["training"].keys()):
         if metric_key in all_metrics["validation"]:
-            display_name = METRIC_DISPLAY_NAMES.get(metric_key, metric_key.replace('_', ' ').title())
+            display_name = METRIC_DISPLAY_NAMES.get(
+                metric_key, metric_key.replace("_", " ").title()
+            )
             t = all_metrics["training"].get(metric_key)
             v = all_metrics["validation"].get(metric_key)
             if t is not None and v is not None:
@@ -557,12 +574,17 @@ def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> st
         "</tr></thead><tbody>"
     )
     for row in rows:
-        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
+        html += generate_table_row(
+            row,
+            "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;",
+        )
     html += "</tbody></table></div><br>"
     return html
 
 
-def format_test_merged_stats_table_html(test_metrics: Dict[str, Optional[float]]) -> str:
+def format_test_merged_stats_table_html(
+    test_metrics: Dict[str, Optional[float]],
+) -> str:
     """Formats an HTML table for test metrics.
 
     Args:
@@ -573,7 +595,7 @@ def format_test_merged_stats_table_html(test_metrics: Dict[str, Optional[float]]
     """
     rows = []
     for key in sorted(test_metrics.keys()):
-        display_name = METRIC_DISPLAY_NAMES.get(key, key.replace('_', ' ').title())
+        display_name = METRIC_DISPLAY_NAMES.get(key, key.replace("_", " ").title())
         value = test_metrics[key]
         if value is not None:
             rows.append([display_name, f"{value:.4f}"])
@@ -591,15 +613,15 @@ def format_test_merged_stats_table_html(test_metrics: Dict[str, Optional[float]]
         "</tr></thead><tbody>"
     )
     for row in rows:
-        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
+        html += generate_table_row(
+            row,
+            "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;",
+        )
     html += "</tbody></table></div><br>"
     return html
 
 
-def build_tabbed_html(
-        metrics_html: str,
-        train_val_html: str,
-        test_html: str) -> str:
+def build_tabbed_html(metrics_html: str, train_val_html: str, test_html: str) -> str:
     return f"""
 <style>
 .tabs {{
@@ -659,8 +681,6 @@ function showTab(id) {{
 """
 
 
-
-
 def split_data_0_2(
     df: pd.DataFrame,
     split_column: str,
@@ -668,7 +688,13 @@ def split_data_0_2(
     random_state: int = 42,
     label_column: Optional[str] = None,
 ) -> pd.DataFrame:
+    """
+    Given a DataFrame whose split_column only contains {0,2}, re-assign
+    a portion of the 0s to become 1s (validation). Returns a fresh DataFrame.
+    """
+    # Work on a copy
     out = df.copy()
+    # Ensure split col is integer dtype
     out[split_column] = pd.to_numeric(out[split_column], errors="coerce").astype(int)
 
     idx_train = out.index[out[split_column] == 0].tolist()
@@ -676,15 +702,18 @@ def split_data_0_2(
     if not idx_train:
         logger.info("No rows with split=0; nothing to do.")
         return out
-
+    # Determine stratify array if possible
     stratify_arr = None
     if label_column and label_column in out.columns:
+        # Only stratify if at least two classes and enough samples
         label_counts = out.loc[idx_train, label_column].value_counts()
         if label_counts.size > 1 and (label_counts.min() * validation_size) >= 1:
             stratify_arr = out.loc[idx_train, label_column]
         else:
-            logger.warning("Cannot stratify (too few labels); splitting without stratify.")
-
+            logger.warning(
+                "Cannot stratify (too few labels); splitting without stratify."
+            )
+    # Edge cases
     if validation_size <= 0:
         logger.info("validation_size <= 0; keeping all as train.")
         return out
@@ -692,13 +721,13 @@ def split_data_0_2(
         logger.info("validation_size >= 1; moving all train → validation.")
         out.loc[idx_train, split_column] = 1
         return out
-
+    # Do the split
     try:
         train_idx, val_idx = train_test_split(
             idx_train,
             test_size=validation_size,
             random_state=random_state,
-            stratify=stratify_arr
+            stratify=stratify_arr,
         )
     except ValueError as e:
         logger.warning(f"Stratified split failed ({e}); retrying without stratify.")
@@ -706,16 +735,20 @@ def split_data_0_2(
             idx_train,
             test_size=validation_size,
             random_state=random_state,
-            stratify=None
+            stratify=None,
         )
-
+    # Assign new splits
     out.loc[train_idx, split_column] = 0
     out.loc[val_idx, split_column] = 1
+    # idx_test stays at 2
+
+    # Cast back to a clean integer type
     out[split_column] = out[split_column].astype(int)
     return out
 
 
 class Backend(Protocol):
+    """Interface for a machine learning backend."""
     def prepare_config(
         self,
         config_params: Dict[str, Any],
@@ -739,19 +772,25 @@ class Backend(Protocol):
         ...
 
     def generate_html_report(
-        self,
-        title: str,
-        output_dir: str
+            self,
+            title: str,
+            output_dir: str
     ) -> Path:
         ...
 
 
 class LudwigDirectBackend:
+    """
+    Backend for running Ludwig experiments directly via the internal experiment_cli function.
+    """
     def prepare_config(
         self,
         config_params: Dict[str, Any],
         split_config: Dict[str, Any],
     ) -> str:
+        """
+        Build and serialize the Ludwig YAML configuration.
+        """
         logger.info("LudwigDirectBackend: Preparing YAML configuration.")
 
         model_name = config_params.get("model_name", "resnet18")
@@ -768,7 +807,7 @@ class LudwigDirectBackend:
             logger.warning("trainable=False; use_pretrained=False is ignored.")
             logger.warning("Setting trainable=True to train the model from scratch.")
             trainable = True
-
+        # Encoder setup
         raw_encoder = MODEL_ENCODER_TEMPLATES.get(model_name, model_name)
         if isinstance(raw_encoder, dict):
             encoder_config = {
@@ -779,6 +818,8 @@ class LudwigDirectBackend:
         else:
             encoder_config = {"type": raw_encoder}
 
+        # Trainer & optimizer
+        # optimizer = {"type": "adam", "learning_rate": 5e-5} if fine_tune else {"type": "adam"}
         batch_size_cfg = batch_size or "auto"
 
         label_column_path = config_params.get("label_column_data_path")
@@ -788,10 +829,14 @@ class LudwigDirectBackend:
                 label_series = pd.read_csv(label_column_path)[LABEL_COLUMN_NAME]
                 num_unique_labels = label_series.nunique()
             except Exception as e:
-                logger.warning(f"Could not determine label cardinality, defaulting to 'binary': {e}")
+                logger.warning(
+                    f"Could not determine label cardinality, defaulting to 'binary': {e}"
+                )
                 num_unique_labels = 2
         else:
-            logger.warning("label_column_data_path not provided, defaulting to 'binary'")
+            logger.warning(
+                "label_column_data_path not provided, defaulting to 'binary'"
+            )
             num_unique_labels = 2
 
         output_type = "binary" if num_unique_labels == 2 else "category"
@@ -805,9 +850,7 @@ class LudwigDirectBackend:
                     "encoder": encoder_config,
                 }
             ],
-            "output_features": [
-                {"name": LABEL_COLUMN_NAME, "type": output_type}
-            ],
+            "output_features": [{"name": LABEL_COLUMN_NAME, "type": output_type}],
             "combiner": {"type": "concat"},
             "trainer": {
                 "epochs": epochs,
@@ -828,7 +871,9 @@ class LudwigDirectBackend:
             logger.info("LudwigDirectBackend: YAML config generated.")
             return yaml_str
         except Exception:
-            logger.error("LudwigDirectBackend: Failed to serialize YAML.", exc_info=True)
+            logger.error(
+                "LudwigDirectBackend: Failed to serialize YAML.", exc_info=True
+            )
             raise
 
     def run_experiment(
@@ -838,14 +883,16 @@ class LudwigDirectBackend:
         output_dir: Path,
         random_seed: int = 42,
     ) -> None:
+        """
+        Invoke Ludwig's internal experiment_cli function to run the experiment.
+        """
         logger.info("LudwigDirectBackend: Starting experiment execution.")
 
         try:
             from ludwig.experiment import experiment_cli
         except ImportError as e:
             logger.error(
-                "LudwigDirectBackend: Could not import experiment_cli.",
-                exc_info=True
+                "LudwigDirectBackend: Could not import experiment_cli.", exc_info=True
             )
             raise RuntimeError("Ludwig import failed.") from e
 
@@ -858,25 +905,30 @@ class LudwigDirectBackend:
                 output_directory=str(output_dir),
                 random_seed=random_seed,
             )
-            logger.info(f"LudwigDirectBackend: Experiment completed. Results in {output_dir}")
+            logger.info(
+                f"LudwigDirectBackend: Experiment completed. Results in {output_dir}"
+            )
         except TypeError as e:
             logger.error(
                 "LudwigDirectBackend: Argument mismatch in experiment_cli call.",
-                exc_info=True
+                exc_info=True,
             )
             raise RuntimeError("Ludwig argument error.") from e
         except Exception:
             logger.error(
-                "LudwigDirectBackend: Experiment execution error.",
-                exc_info=True
+                "LudwigDirectBackend: Experiment execution error.", exc_info=True
             )
             raise
 
     def get_training_process(self, output_dir) -> float:
+        """
+        Retrieve the learning rate used in the most recent Ludwig run.
+        Returns:
+            float: learning rate (or None if not found)
+        """
         output_dir = Path(output_dir)
         exp_dirs = sorted(
-            output_dir.glob("experiment_run*"),
-            key=lambda p: p.stat().st_mtime
+            output_dir.glob("experiment_run*"), key=lambda p: p.stat().st_mtime
         )
 
         if not exp_dirs:
@@ -901,10 +953,10 @@ class LudwigDirectBackend:
             return {}
 
     def convert_parquet_to_csv(self, output_dir: Path):
+        """Convert the predictions Parquet file to CSV."""
         output_dir = Path(output_dir)
         exp_dirs = sorted(
-            output_dir.glob("experiment_run*"),
-            key=lambda p: p.stat().st_mtime
+            output_dir.glob("experiment_run*"), key=lambda p: p.stat().st_mtime
         )
         if not exp_dirs:
             logger.warning(f"No experiment run dirs found in {output_dir}")
@@ -920,42 +972,46 @@ class LudwigDirectBackend:
             logger.error(f"Error converting Parquet to CSV: {e}")
 
     def generate_plots(self, output_dir: Path) -> None:
+        """
+        Generate _all_ registered Ludwig visualizations for the latest experiment run.
+        """
         logger.info("Generating all Ludwig visualizations…")
 
         test_plots = {
-            'compare_performance',
-            'compare_classifiers_performance_from_prob',
-            'compare_classifiers_performance_from_pred',
-            'compare_classifiers_performance_changing_k',
-            'compare_classifiers_multiclass_multimetric',
-            'compare_classifiers_predictions',
-            'confidence_thresholding_2thresholds_2d',
-            'confidence_thresholding_2thresholds_3d',
-            'confidence_thresholding',
-            'confidence_thresholding_data_vs_acc',
-            'binary_threshold_vs_metric',
-            'roc_curves',
-            'roc_curves_from_test_statistics',
-            'calibration_1_vs_all',
-            'calibration_multiclass',
-            'confusion_matrix',
-            'frequency_vs_f1',
+            "compare_performance",
+            "compare_classifiers_performance_from_prob",
+            "compare_classifiers_performance_from_pred",
+            "compare_classifiers_performance_changing_k",
+            "compare_classifiers_multiclass_multimetric",
+            "compare_classifiers_predictions",
+            "confidence_thresholding_2thresholds_2d",
+            "confidence_thresholding_2thresholds_3d",
+            "confidence_thresholding",
+            "confidence_thresholding_data_vs_acc",
+            "binary_threshold_vs_metric",
+            "roc_curves",
+            "roc_curves_from_test_statistics",
+            "calibration_1_vs_all",
+            "calibration_multiclass",
+            "confusion_matrix",
+            "frequency_vs_f1",
         }
         train_plots = {
-            'learning_curves',
-            'compare_classifiers_performance_subset',
+            "learning_curves",
+            "compare_classifiers_performance_subset",
         }
 
+        # 1) find the most recent experiment directory
         output_dir = Path(output_dir)
         exp_dirs = sorted(
-            output_dir.glob("experiment_run*"),
-            key=lambda p: p.stat().st_mtime
+            output_dir.glob("experiment_run*"), key=lambda p: p.stat().st_mtime
         )
         if not exp_dirs:
             logger.warning(f"No experiment run dirs found in {output_dir}")
             return
         exp_dir = exp_dirs[-1]
 
+        # 2) ensure viz output subfolder exists
         viz_dir = exp_dir / "visualizations"
         viz_dir.mkdir(exist_ok=True)
         train_viz = viz_dir / "train"
@@ -963,14 +1019,17 @@ class LudwigDirectBackend:
         train_viz.mkdir(parents=True, exist_ok=True)
         test_viz.mkdir(parents=True, exist_ok=True)
 
+        # 3) helper to check file existence
         def _check(p: Path) -> Optional[str]:
             return str(p) if p.exists() else None
 
+        # 4) gather standard Ludwig output files
         training_stats = _check(exp_dir / "training_statistics.json")
         test_stats = _check(exp_dir / TEST_STATISTICS_FILE_NAME)
         probs_path = _check(exp_dir / PREDICTIONS_PARQUET_FILE_NAME)
         gt_metadata = _check(exp_dir / "model" / TRAIN_SET_METADATA_FILE_NAME)
 
+        # 5) try to read original dataset & split file from description.json
         dataset_path = None
         split_file = None
         desc = exp_dir / DESCRIPTION_FILE_NAME
@@ -980,6 +1039,7 @@ class LudwigDirectBackend:
             dataset_path = _check(Path(cfg.get("dataset", "")))
             split_file = _check(Path(get_split_path(cfg.get("dataset", ""))))
 
+        # 6) infer output feature name
         output_feature = ""
         if desc.exists():
             try:
@@ -991,6 +1051,7 @@ class LudwigDirectBackend:
                 stats = json.load(f)
             output_feature = next(iter(stats.keys()), "")
 
+        # 7) loop through every registered viz
         viz_registry = get_visualizations_registry()
         for viz_name, viz_func in viz_registry.items():
             viz_dir_plot = None
@@ -1022,17 +1083,19 @@ class LudwigDirectBackend:
         logger.info(f"All visualizations written to {viz_dir}")
 
     def generate_html_report(
-            self,
-            title: str,
-            output_dir: str,
-            config: dict,
-            split_info: str) -> Path:
+        self, title: str, output_dir: str, config: dict, split_info: str
+    ) -> Path:
+        """
+        Assemble an HTML report from visualizations under train_val/ and test/ folders.
+        """
         cwd = Path.cwd()
         report_name = title.lower().replace(" ", "_") + "_report.html"
         report_path = cwd / report_name
         output_dir = Path(output_dir)
 
-        exp_dirs = sorted(output_dir.glob("experiment_run*"), key=lambda p: p.stat().st_mtime)
+        exp_dirs = sorted(
+            output_dir.glob("experiment_run*"), key=lambda p: p.stat().st_mtime
+        )
         if not exp_dirs:
             raise RuntimeError(f"No 'experiment*' dirs found in {output_dir}")
         exp_dir = exp_dirs[-1]
@@ -1057,21 +1120,33 @@ class LudwigDirectBackend:
                 with open(test_stats_path) as f:
                     test_stats = json.load(f)
                 output_type = detect_output_type(test_stats)  # Determine output type
-                all_metrics = extract_metrics_from_json(train_stats, test_stats, output_type)  # Pass output_type
+                all_metrics = extract_metrics_from_json(
+                    train_stats, test_stats, output_type
+                )  # Pass output_type
                 metrics_html = format_stats_table_html(train_stats, test_stats)
-                train_val_metrics_html = format_train_val_stats_table_html(train_stats, test_stats)
-                test_metrics_html = format_test_merged_stats_table_html(all_metrics["test"])
+                train_val_metrics_html = format_train_val_stats_table_html(
+                    train_stats, test_stats
+                )
+                test_metrics_html = format_test_merged_stats_table_html(
+                    all_metrics["test"]
+                )
         except Exception as e:
-            logger.warning(f"Could not load stats for HTML report: {type(e).__name__}: {e}")
+            logger.warning(
+                f"Could not load stats for HTML report: {type(e).__name__}: {e}"
+            )
 
         config_html = ""
         training_progress = self.get_training_process(output_dir)
         try:
-            config_html = format_config_table_html(config, split_info, training_progress)
+            config_html = format_config_table_html(
+                config, split_info, training_progress
+            )
         except Exception as e:
             logger.warning(f"Could not load config for HTML report: {e}")
 
-        def render_img_section(title: str, dir_path: Path, output_type: str = None) -> str:
+        def render_img_section(
+            title: str, dir_path: Path, output_type: str = None
+        ) -> str:
             if not dir_path.exists():
                 return f"<h2>{title}</h2><p><em>Directory not found.</em></p>"
 
@@ -1087,8 +1162,16 @@ class LudwigDirectBackend:
                     "confusion_matrix_entropy__label_top2.png",
                 ]
                 img_names = {img.name: img for img in imgs}
-                ordered_imgs = [img_names[fname] for fname in order if fname in img_names]
-                remaining = sorted([img for img in imgs if img.name not in order and img.name != "roc_curves.png"])
+                ordered_imgs = [
+                    img_names[fname] for fname in order if fname in img_names
+                ]
+                remaining = sorted(
+                    [
+                        img
+                        for img in imgs
+                        if img.name not in order and img.name != "roc_curves.png"
+                    ]
+                )
                 imgs = ordered_imgs + remaining
 
             elif title == "Test Visualizations" and output_type == "category":
@@ -1106,9 +1189,13 @@ class LudwigDirectBackend:
                     "confusion_matrix_entropy__label_top10.png",
                 ]
                 img_names = {img.name: img for img in imgs if img.name not in unwanted}
-                ordered_imgs = [img_names[fname] for fname in display_order if fname in img_names]
+                ordered_imgs = [
+                    img_names[fname] for fname in display_order if fname in img_names
+                ]
                 # Append any remaining images not in display_order, alphabetically
-                remaining = sorted([img for img in img_names.values() if img.name not in display_order])
+                remaining = sorted(
+                    [img for img in img_names.values() if img.name not in display_order]
+                )
                 imgs = ordered_imgs + remaining
 
             else:
@@ -1128,7 +1215,7 @@ class LudwigDirectBackend:
                 b64 = encode_image_to_base64(str(img))
                 section_html += (
                     f'<div class="plot" style="margin-bottom:20px;text-align:center;">'
-                    f"<h3>{img.stem.replace('_',' ').title()}</h3>"
+                    f"<h3>{img.stem.replace('_', ' ').title()}</h3>"
                     f'<img src="data:image/png;base64,{b64}" '
                     'style="max-width:90%;max-height:600px;border:1px solid #ddd;" />'
                     "</div>"
@@ -1138,8 +1225,16 @@ class LudwigDirectBackend:
 
         button_html = '<button onclick="openMetricsHelp()">Model Evaluation Metrics — Help Guide</button><br><br>'
         tab1_content = button_html + config_html + metrics_html
-        tab2_content = button_html + train_val_metrics_html + render_img_section("Training & Validation Visualizations", train_viz_dir)
-        tab3_content = button_html + test_metrics_html + render_img_section("Test Visualizations", test_viz_dir, output_type)
+        tab2_content = (
+            button_html
+            + train_val_metrics_html
+            + render_img_section("Training & Validation Visualizations", train_viz_dir)
+        )
+        tab3_content = (
+            button_html
+            + test_metrics_html
+            + render_img_section("Test Visualizations", test_viz_dir, output_type)
+        )
 
         tabbed_html = build_tabbed_html(tab1_content, tab2_content, tab3_content)
         modal_html = get_metrics_help_modal()
@@ -1156,7 +1251,17 @@ class LudwigDirectBackend:
 
         return report_path
 
+
 class WorkflowOrchestrator:
+    """
+    Manages the image-classification workflow:
+      1. Creates temp dirs
+      2. Extracts images
+      3. Prepares data (CSV + splits)
+      4. Renders a backend config
+      5. Runs the experiment
+      6. Cleans up
+    """
     def __init__(self, args: argparse.Namespace, backend: Backend):
         self.args = args
         self.backend = backend
@@ -1165,11 +1270,11 @@ class WorkflowOrchestrator:
         logger.info(f"Orchestrator initialized with backend: {type(backend).__name__}")
 
     def _create_temp_dirs(self) -> None:
+        """Create temporary output and image extraction directories."""
         try:
-            self.temp_dir = Path(tempfile.mkdtemp(
-                dir=self.args.output_dir,
-                prefix=TEMP_DIR_PREFIX
-            ))
+            self.temp_dir = Path(
+                tempfile.mkdtemp(dir=self.args.output_dir, prefix=TEMP_DIR_PREFIX)
+            )
             self.image_extract_dir = self.temp_dir / "images"
             self.image_extract_dir.mkdir()
             logger.info(f"Created temp directory: {self.temp_dir}")
@@ -1178,9 +1283,12 @@ class WorkflowOrchestrator:
             raise
 
     def _extract_images(self) -> None:
+        """Extract images from ZIP into the temp image directory."""
         if self.image_extract_dir is None:
             raise RuntimeError("Temp image directory not initialized.")
-        logger.info(f"Extracting images from {self.args.image_zip} → {self.image_extract_dir}")
+        logger.info(
+            f"Extracting images from {self.args.image_zip} → {self.image_extract_dir}"
+        )
         try:
             with zipfile.ZipFile(self.args.image_zip, "r") as z:
                 z.extractall(self.image_extract_dir)
@@ -1190,9 +1298,16 @@ class WorkflowOrchestrator:
             raise
 
     def _prepare_data(self) -> Tuple[Path, Dict[str, Any]]:
+        """
+        Load CSV, update image paths, handle splits, and write prepared CSV.
+        Returns:
+            final_csv_path: Path to the prepared CSV
+            split_config: Dict for backend split settings
+        """
         if not self.temp_dir or not self.image_extract_dir:
             raise RuntimeError("Temp dirs not initialized before data prep.")
 
+        # 1) Load
         try:
             df = pd.read_csv(self.args.csv_file)
             logger.info(f"Loaded CSV: {self.args.csv_file}")
@@ -1200,11 +1315,13 @@ class WorkflowOrchestrator:
             logger.error("Error loading CSV file", exc_info=True)
             raise
 
+        # 2) Validate columns
         required = {IMAGE_PATH_COLUMN_NAME, LABEL_COLUMN_NAME}
         missing = required - set(df.columns)
         if missing:
             raise ValueError(f"Missing CSV columns: {', '.join(missing)}")
 
+        # 3) Update image paths
         try:
             df[IMAGE_PATH_COLUMN_NAME] = df[IMAGE_PATH_COLUMN_NAME].apply(
                 lambda p: str((self.image_extract_dir / p).resolve())
@@ -1213,19 +1330,21 @@ class WorkflowOrchestrator:
             logger.error("Error updating image paths", exc_info=True)
             raise
 
+        # 4) Handle splits
         if SPLIT_COLUMN_NAME in df.columns:
             df, split_config, split_info = self._process_fixed_split(df)
         else:
             logger.info("No split column; using random split")
             split_config = {
                 "type": "random",
-                "probabilities": self.args.split_probabilities
+                "probabilities": self.args.split_probabilities,
             }
             split_info = (
                 f"No split column in CSV. Used random split: "
-                f"{[int(p*100) for p in self.args.split_probabilities]}% for train/val/test."
+                f"{[int(p * 100) for p in self.args.split_probabilities]}% for train/val/test."
             )
 
+        # 5) Write out prepared CSV
         final_csv = TEMP_CSV_FILENAME
         try:
             df.to_csv(final_csv, index=False)
@@ -1237,10 +1356,13 @@ class WorkflowOrchestrator:
         return final_csv, split_config, split_info
 
     def _process_fixed_split(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Process a fixed split column (0=train,1=val,2=test)."""
         logger.info(f"Fixed split column '{SPLIT_COLUMN_NAME}' detected.")
         try:
             col = df[SPLIT_COLUMN_NAME]
-            df[SPLIT_COLUMN_NAME] = pd.to_numeric(col, errors="coerce").astype(pd.Int64Dtype())
+            df[SPLIT_COLUMN_NAME] = pd.to_numeric(col, errors="coerce").astype(
+                pd.Int64Dtype()
+            )
             if df[SPLIT_COLUMN_NAME].isna().any():
                 logger.warning("Split column contains non-numeric/missing values.")
 
@@ -1249,10 +1371,11 @@ class WorkflowOrchestrator:
 
             if unique == {0, 2}:
                 df = split_data_0_2(
-                    df, SPLIT_COLUMN_NAME,
+                    df,
+                    SPLIT_COLUMN_NAME,
                     validation_size=self.args.validation_size,
                     label_column=LABEL_COLUMN_NAME,
-                    random_state=self.args.random_seed
+                    random_state=self.args.random_seed,
                 )
                 split_info = (
                     "Detected a split column (with values 0 and 2) in the input CSV. "
@@ -1260,6 +1383,7 @@ class WorkflowOrchestrator:
                     f"reassigned {self.args.validation_size * 100:.1f}% "
                     "of the training set (originally labeled 0) to validation (labeled 1)."
                 )
+
                 logger.info("Applied custom 0/2 split.")
             elif unique.issubset({0, 1, 2}):
                 split_info = "Used user-defined split column from CSV."
@@ -1268,6 +1392,7 @@ class WorkflowOrchestrator:
                 raise ValueError(f"Unexpected split values: {unique}")
 
             return df, {"type": "fixed", "column": SPLIT_COLUMN_NAME}, split_info
+
         except Exception:
             logger.error("Error processing fixed split", exc_info=True)
             raise
@@ -1280,6 +1405,7 @@ class WorkflowOrchestrator:
         self.image_extract_dir = None
 
     def run(self) -> None:
+        """Execute the full workflow end-to-end."""
         logger.info("Starting workflow...")
         self.args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1310,10 +1436,7 @@ class WorkflowOrchestrator:
             logger.info(f"Wrote backend config: {config_file}")
 
             self.backend.run_experiment(
-                csv_path,
-                config_file,
-                self.args.output_dir,
-                self.args.random_seed
+                csv_path, config_file, self.args.output_dir, self.args.random_seed
             )
             logger.info("Workflow completed successfully.")
             self.backend.generate_plots(self.args.output_dir)
@@ -1321,7 +1444,7 @@ class WorkflowOrchestrator:
                 "Image Classification Results",
                 self.args.output_dir,
                 backend_args,
-                split_info
+                split_info,
             )
             logger.info(f"HTML report generated at: {report_file}")
             self.backend.convert_parquet_to_csv(self.args.output_dir)
@@ -1342,6 +1465,7 @@ def parse_learning_rate(s):
 
 class SplitProbAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
+        # values is a list of three floats
         train, val, test = values
         total = train + val + test
         if abs(total - 1.0) > 1e-6:
@@ -1353,69 +1477,73 @@ class SplitProbAction(argparse.Action):
 
 
 def main():
+
     parser = argparse.ArgumentParser(
         description="Image Classification Learner with Pluggable Backends"
     )
     parser.add_argument(
-        "--csv-file", required=True, type=Path,
-        help="Path to the input CSV"
+        "--csv-file", required=True, type=Path, help="Path to the input CSV"
     )
     parser.add_argument(
-        "--image-zip", required=True, type=Path,
-        help="Path to the images ZIP"
+        "--image-zip", required=True, type=Path, help="Path to the images ZIP"
     )
     parser.add_argument(
-        "--model-name", required=True,
+        "--model-name",
+        required=True,
         choices=MODEL_ENCODER_TEMPLATES.keys(),
-        help="Which model template to use"
+        help="Which model template to use",
     )
     parser.add_argument(
-        "--use-pretrained", action="store_true",
-        help="Use pretrained weights for the model"
+        "--use-pretrained",
+        action="store_true",
+        help="Use pretrained weights for the model",
+    )
+    parser.add_argument("--fine-tune", action="store_true", help="Enable fine-tuning")
+    parser.add_argument(
+        "--epochs", type=int, default=10, help="Number of training epochs"
     )
     parser.add_argument(
-        "--fine-tune", action="store_true",
-        help="Enable fine-tuning"
+        "--early-stop", type=int, default=5, help="Early stopping patience"
+    )
+    parser.add_argument("--batch-size", type=int, help="Batch size (None = auto)")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("learner_output"),
+        help="Where to write outputs",
     )
     parser.add_argument(
-        "--epochs", type=int, default=10,
-        help="Number of training epochs"
+        "--validation-size",
+        type=float,
+        default=0.15,
+        help="Fraction for validation (0.0–1.0)",
     )
     parser.add_argument(
-        "--early-stop", type=int, default=5,
-        help="Early stopping patience"
-    )
-    parser.add_argument(
-        "--batch-size", type=int,
-        help="Batch size (None = auto)"
-    )
-    parser.add_argument(
-        "--output-dir", type=Path, default=Path("learner_output"),
-        help="Where to write outputs"
-    )
-    parser.add_argument(
-        "--validation-size", type=float, default=0.15,
-        help="Fraction for validation (0.0–1.0)"
-    )
-    parser.add_argument(
-        "--preprocessing-num-processes", type=int,
+        "--preprocessing-num-processes",
+        type=int,
         default=max(1, os.cpu_count() // 2),
-        help="CPU processes for data prep"
+        help="CPU processes for data prep",
     )
     parser.add_argument(
-        "--split-probabilities", type=float, nargs=3,
+        "--split-probabilities",
+        type=float,
+        nargs=3,
         metavar=("train", "val", "test"),
         action=SplitProbAction,
         default=[0.7, 0.1, 0.2],
-        help="Random split proportions (e.g., 0.7 0.1 0.2). Only used if no split column is present."
+        help="Random split proportions (e.g., 0.7 0.1 0.2). Only used if no split column is present.",
     )
     parser.add_argument(
-        "--random-seed", type=int, default=42,
-        help="Random seed used for dataset splitting (default: 42)"
+        "--random-seed",
+        type=int,
+        default=42,
+        help="Random seed used for dataset splitting (default: 42)",
     )
     parser.add_argument(
-        "--learning-rate", type=parse_learning_rate, default=None,
-        help="Learning rate. If not provided, Ludwig will auto-select it."
+        "--learning-rate",
+        type=parse_learning_rate,
+        default=None,
+        help="Learning rate. If not provided, Ludwig will auto-select it.",
     )
 
     args = parser.parse_args()
@@ -1429,6 +1557,7 @@ def main():
         parser.error(f"ZIP not found: {args.image_zip}")
 
     # --- Instantiate Backend and Orchestrator ---
+    # Use the new LudwigDirectBackend
     backend_instance = LudwigDirectBackend()
     orchestrator = WorkflowOrchestrator(args, backend_instance)
 
@@ -1444,12 +1573,15 @@ def main():
         sys.exit(exit_code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         import ludwig
+
         logger.debug(f"Found Ludwig version: {ludwig.globals.LUDWIG_VERSION}")
     except ImportError:
-        logger.error("Ludwig library not found. Please ensure Ludwig is installed ('pip install ludwig[image]')")
+        logger.error(
+            "Ludwig library not found. Please ensure Ludwig is installed ('pip install ludwig[image]')"
+        )
         sys.exit(1)
 
     main()
