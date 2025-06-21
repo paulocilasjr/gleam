@@ -49,15 +49,6 @@ class FeatureImportanceAnalyzer:
         LOG.info(self.exp)
         self.exp.setup(self.data, **setup_params)
 
-    # def save_coefficients(self):
-    #     model = self.exp.create_model('lr')
-    #     coef_df = pd.DataFrame({
-    #         'Feature': self.data.columns.drop(self.target),
-    #         'Coefficient': model.coef_[0]
-    #     })
-    #     coef_html = coef_df.to_html(index=False)
-    #     return coef_html
-
     def save_tree_importance(self):
         model = self.exp.create_model('rf')
         importances = model.feature_importances_
@@ -84,11 +75,19 @@ class FeatureImportanceAnalyzer:
     def save_shap_values(self):
         model = self.exp.create_model('lightgbm')
         import shap
-        explainer = shap.Explainer(model)
-        shap_values = explainer.shap_values(
-            self.exp.get_config('X_transformed'))
+        # Use TreeExplainer for tree models, fallback if needed
+        try:
+            explainer = shap.Explainer(model)
+        except Exception:
+            explainer = shap.TreeExplainer(model)
+        X_transformed = self.exp.get_config('X_transformed')
+        shap_values = explainer.shap_values(X_transformed)
+        # Only TreeExplainer has shap_interaction_values, so skip interaction plots for LinearExplainer
+        if hasattr(explainer, "shap_interaction_values"):
+            pass  # You could add interaction plots here if needed, but skip for linear models
+        # summary plot (works for all)
         shap.summary_plot(shap_values,
-                          self.exp.get_config('X_transformed'), show=False)
+                          X_transformed, show=False)
         plt.title('Shap (LightGBM)')
         plot_path = os.path.join(
             self.output_dir, 'shap_summary.png')
@@ -97,7 +96,6 @@ class FeatureImportanceAnalyzer:
         self.plots['shap_summary'] = plot_path
 
     def generate_feature_importance(self):
-        # coef_html = self.save_coefficients()
         self.save_tree_importance()
         self.save_shap_values()
 
@@ -115,16 +113,15 @@ class FeatureImportanceAnalyzer:
             plots_html += f"""
             <div class="plot" id="{plot_name}">
                 <h2>{'Feature importance analysis from a'
-                    'trained Random Forest'
+                    ' trained Random Forest'
                     if plot_name == 'tree_importance'
                     else 'SHAP Summary from a trained lightgbm'}</h2>
                 <h3>{'Use gini impurity for'
-                    'calculating feature importance for classification'
-                    'and Variance Reduction for regression'
+                    ' calculating feature importance for classification'
+                    ' and Variance Reduction for regression'
                   if plot_name == 'tree_importance'
                   else ''}</h3>
-                <img src="data:image/png;base64,
-                {encoded_image}" alt="{plot_name}">
+                <img src="data:image/png;base64,{encoded_image}" alt="{plot_name}">
             </div>
             """
 
@@ -163,7 +160,11 @@ if __name__ == "__main__":
         help="Directory to save the outputs")
     args = parser.parse_args()
 
+    # Fix initialization order for CLI
     analyzer = FeatureImportanceAnalyzer(
-        args.data_path, args.target_col,
-        args.task_type, args.output_dir)
+        task_type=args.task_type,
+        output_dir=args.output_dir,
+        data_path=args.data_path,
+        target_col=args.target_col
+    )
     analyzer.run()

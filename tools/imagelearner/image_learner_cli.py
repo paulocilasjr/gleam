@@ -10,6 +10,7 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Protocol, Tuple
 
+import numpy as np
 import pandas as pd
 import yaml
 from ludwig.globals import (
@@ -108,6 +109,32 @@ MODEL_ENCODER_TEMPLATES: Dict[str, Any] = {
     'mobilenet_v3_large': {'type': 'mobilenet_v3_large'},
     'mobilenet_v3_small': {'type': 'mobilenet_v3_small'},
 }
+METRIC_DISPLAY_NAMES = {
+    "accuracy": "Accuracy",
+    "accuracy_micro": "Accuracy-Micro",
+    "loss": "Loss",
+    "roc_auc": "ROC-AUC",
+    "roc_auc_macro": "ROC-AUC-Macro",
+    "roc_auc_micro": "ROC-AUC-Micro",
+    "hits_at_k": "Hits at K",
+    "precision": "Precision",
+    "recall": "Recall",
+    "specificity": "Specificity",
+    "kappa_score": "Cohen's Kappa",
+    "token_accuracy": "Token Accuracy",
+    "avg_precision_macro": "Precision-Macro",
+    "avg_recall_macro": "Recall-Macro",
+    "avg_f1_score_macro": "F1-score-Macro",
+    "avg_precision_micro": "Precision-Micro",
+    "avg_recall_micro": "Recall-Micro",
+    "avg_f1_score_micro": "F1-score-Micro",
+    "avg_precision_weighted": "Precision-Weighted",
+    "avg_recall_weighted": "Recall-Weighted",
+    "avg_f1_score_weighted": "F1-score-Weighted",
+    "average_precision_macro": " Precision-Average-Macro",
+    "average_precision_micro": "Precision-Average-Micro",
+    "average_precision_samples": "Precision-Average-Samples",
+}
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -115,6 +142,129 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(name)s: %(message)s'
 )
 logger = logging.getLogger("ImageLearner")
+
+def get_metrics_help_modal() -> str:
+    modal_html = '''
+<div id="metricsHelpModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Model Evaluation Metrics — Help Guide</h2>
+    <div class="metrics-guide">
+
+      <h3>1) General Metrics</h3>
+      <p><strong>Loss:</strong> Measures the difference between predicted and actual values. Lower is better. Often used for optimization during training.</p>
+      <p><strong>Accuracy:</strong> Proportion of correct predictions among all predictions. Simple but can be misleading for imbalanced datasets.</p>
+      <p><strong>Micro Accuracy:</strong> Calculates accuracy by summing up all individual true positives and true negatives across all classes, making it suitable for multiclass or multilabel problems.</p>
+      <p><strong>Token Accuracy:</strong> Measures how often the predicted tokens (e.g., in sequences) match the true tokens. Useful in sequence prediction tasks like NLP.</p>
+
+      <h3>2) Precision, Recall & Specificity</h3>
+      <p><strong>Precision:</strong> Out of all positive predictions, how many were correct. Precision = TP / (TP + FP). Helps when false positives are costly.</p>
+      <p><strong>Recall (Sensitivity):</strong> Out of all actual positives, how many were predicted correctly. Recall = TP / (TP + FN). Important when missing positives is risky.</p>
+      <p><strong>Specificity:</strong> True negative rate. Measures how well the model identifies negatives. Specificity = TN / (TN + FP). Useful in medical testing to avoid false alarms.</p>
+
+      <h3>3) Macro, Micro, and Weighted Averages</h3>
+      <p><strong>Macro Precision / Recall / F1:</strong> Averages the metric across all classes, treating each class equally, regardless of class frequency. Best when class sizes are balanced.</p>
+      <p><strong>Micro Precision / Recall / F1:</strong> Aggregates TP, FP, FN across all classes before computing the metric. Gives a global view and is ideal for class-imbalanced problems.</p>
+      <p><strong>Weighted Precision / Recall / F1:</strong> Averages each metric across classes, weighted by the number of true instances per class. Balances importance of classes based on frequency.</p>
+
+      <h3>4) Average Precision (PR-AUC Variants)</h3>
+      <p><strong>Average Precision Macro:</strong> Precision-Recall AUC averaged across all classes equally. Useful for balanced multi-class problems.</p>
+      <p><strong>Average Precision Micro:</strong> Global Precision-Recall AUC using all instances. Best for imbalanced data or multi-label classification.</p>
+      <p><strong>Average Precision Samples:</strong> Precision-Recall AUC averaged across individual samples (not classes). Ideal for multi-label problems where each sample can belong to multiple classes.</p>
+
+      <h3>5) ROC-AUC Variants</h3>
+      <p><strong>ROC-AUC:</strong> Measures model's ability to distinguish between classes. AUC = 1 is perfect; 0.5 is random guessing. Use for binary classification.</p>
+      <p><strong>Macro ROC-AUC:</strong> Averages the AUC across all classes equally. Suitable when classes are balanced and of equal importance.</p>
+      <p><strong>Micro ROC-AUC:</strong> Computes AUC from aggregated predictions across all classes. Useful in multiclass or multilabel settings with imbalance.</p>
+
+      <h3>6) Ranking Metrics</h3>
+      <p><strong>Hits at K:</strong> Measures whether the true label is among the top-K predictions. Common in recommendation systems and retrieval tasks.</p>
+
+      <h3>7) Confusion Matrix Stats (Per Class)</h3>
+      <p><strong>True Positives / Negatives (TP / TN):</strong> Correct predictions for positives and negatives respectively.</p>
+      <p><strong>False Positives / Negatives (FP / FN):</strong> Incorrect predictions — false alarms and missed detections.</p>
+
+      <h3>8) Other Useful Metrics</h3>
+      <p><strong>Cohen's Kappa:</strong> Measures agreement between predicted and actual values adjusted for chance. Useful for multiclass classification with imbalanced labels.</p>
+      <p><strong>Matthews Correlation Coefficient (MCC):</strong> Balanced measure of prediction quality that takes into account TP, TN, FP, and FN. Particularly effective for imbalanced datasets.</p>
+
+      <h3>9) Metric Recommendations</h3>
+      <ul>
+        <li>Use <strong>Accuracy + F1</strong> for balanced data.</li>
+        <li>Use <strong>Precision, Recall, ROC-AUC</strong> for imbalanced datasets.</li>
+        <li>Use <strong>Average Precision Micro</strong> for multilabel or class-imbalanced problems.</li>
+        <li>Use <strong>Macro scores</strong> when all classes should be treated equally.</li>
+        <li>Use <strong>Weighted scores</strong> when class imbalance should be accounted for without ignoring small classes.</li>
+        <li>Use <strong>Confusion Matrix stats</strong> to analyze class-wise performance.</li>
+        <li>Use <strong>Hits at K</strong> for recommendation or ranking-based tasks.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+'''
+    modal_css = '''
+<style>
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+}
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 800px;
+}
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+.metrics-guide h3 {
+  margin-top: 20px;
+}
+.metrics-guide p {
+  margin: 5px 0;
+}
+.metrics-guide ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+</style>
+'''
+    modal_js = '''
+<script>
+var modal = document.getElementById("metricsHelpModal");
+var span = document.getElementsByClassName("close")[0];
+span.onclick = function() {
+  modal.style.display = "none";
+}
+window.onclick = function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+}
+function openMetricsHelp() {
+  modal.style.display = "block";
+}
+</script>
+'''
+    return modal_css + modal_html + modal_js
 
 
 def format_config_table_html(
@@ -214,12 +364,35 @@ def format_config_table_html(
     )
 
 
-def format_stats_table_html(training_stats: dict, test_stats: dict) -> str:
-    train_metrics = training_stats.get("training", {}).get("label", {})
-    val_metrics = training_stats.get("validation", {}).get("label", {})
-    test_metrics = test_stats.get("label", {})
+def detect_output_type(test_stats):
+    """Detects if the output type is 'binary' or 'category' based on test statistics.
 
-    all_metrics = set(train_metrics) | set(val_metrics) | set(test_metrics)
+    Args:
+        train_stats (dict): Training statistics.
+        test_stats (dict): Test statistics.
+
+    Returns:
+        str: 'binary' or 'category'.
+    """
+    label_stats = test_stats.get("label", {})
+    per_class = label_stats.get("per_class_stats", {})
+    if len(per_class) == 2:
+        return "binary"
+    return "category"
+
+
+def extract_metrics_from_json(train_stats: dict, test_stats: dict, output_type: str) -> dict:
+    """Extracts relevant metrics from training and test statistics based on the output type.
+
+    Args:
+        train_stats (dict): Training statistics.
+        test_stats (dict): Test statistics.
+        output_type (str): Output type ('binary' or 'category').
+
+    Returns:
+        dict: Extracted metrics for training, validation, and test splits.
+    """
+    metrics = {"training": {}, "validation": {}, "test": {}}
 
     def get_last_value(stats, key):
         val = stats.get(key)
@@ -229,48 +402,204 @@ def format_stats_table_html(training_stats: dict, test_stats: dict) -> str:
             return val
         return None
 
+    for split in ["training", "validation"]:
+        split_stats = train_stats.get(split, {})
+        if not split_stats:
+            logging.warning(f"No statistics found for {split} split")
+            continue
+        label_stats = split_stats.get("label", {})
+        if not label_stats:
+            logging.warning(f"No label statistics found for {split} split")
+            continue
+        if output_type == "binary":
+            metrics[split] = {
+                "accuracy": get_last_value(label_stats, "accuracy"),
+                "loss": get_last_value(label_stats, "loss"),
+                "precision": get_last_value(label_stats, "precision"),
+                "recall": get_last_value(label_stats, "recall"),
+                "specificity": get_last_value(label_stats, "specificity"),
+                "roc_auc": get_last_value(label_stats, "roc_auc"),
+            }
+        else:
+            metrics[split] = {
+                "accuracy": get_last_value(label_stats, "accuracy"),
+                "accuracy_micro": get_last_value(label_stats, "accuracy_micro"),
+                "loss": get_last_value(label_stats, "loss"),
+                "roc_auc": get_last_value(label_stats, "roc_auc"),
+                "hits_at_k": get_last_value(label_stats, "hits_at_k"),
+            }
+
+    # Test metrics: dynamic extraction according to exclusions
+    test_label_stats = test_stats.get("label", {})
+    if not test_label_stats:
+        logging.warning("No label statistics found for test split")
+    else:
+        combined_stats = test_stats.get("combined", {})
+        overall_stats = test_label_stats.get("overall_stats", {})
+
+        # Define exclusions
+        if output_type == "binary":
+            exclude = {"per_class_stats", "precision_recall_curve", "roc_curve"}
+        else:
+            exclude = {"per_class_stats", "confusion_matrix"}
+
+        # 1. Get all scalar test_label_stats not excluded
+        test_metrics = {}
+        for k, v in test_label_stats.items():
+            if k in exclude:
+                continue
+            # Exclude overall_stats (handled below)
+            if k == "overall_stats":
+                continue
+            # Only include scalars (not dicts/lists)
+            if isinstance(v, (int, float, str, bool)):
+                test_metrics[k] = v
+
+        # 2. Add overall_stats (flattened)
+        for k, v in overall_stats.items():
+            test_metrics[k] = v
+
+        # 3. Optionally include combined/loss if present and not already
+        if "loss" in combined_stats and "loss" not in test_metrics:
+            test_metrics["loss"] = combined_stats["loss"]
+
+        metrics["test"] = test_metrics
+
+    return metrics
+
+def generate_table_row(cells, styles):
+    """Helper function to generate an HTML table row.
+
+    Args:
+        cells (list): List of cell values.
+        styles (str): CSS styles for the cells.
+
+    Returns:
+        str: HTML row string.
+    """
+    return "<tr>" + "".join(f"<td style='{styles}'>{cell}</td>" for cell in cells) + "</tr>"
+
+
+def format_stats_table_html(train_stats: dict, test_stats: dict) -> str:
+    """Formats a combined HTML table for training, validation, and test metrics.
+
+    Args:
+        train_stats (dict): Training statistics.
+        test_stats (dict): Test statistics.
+
+    Returns:
+        str: HTML table string.
+    """
+    output_type = detect_output_type(test_stats)
+    all_metrics = extract_metrics_from_json(train_stats, test_stats, output_type)
     rows = []
-    for metric in sorted(all_metrics):
-        t = get_last_value(train_metrics, metric)
-        v = get_last_value(val_metrics, metric)
-        te = get_last_value(test_metrics, metric)
-        if all(x is not None for x in [t, v, te]):
-            row = (
-                f"<tr>"
-                f"<td style='padding: 6px 12px; border: 1px solid #ccc; text-align: left;'>{metric}</td>"
-                f"<td style='padding: 6px 12px; border: 1px solid #ccc; text-align: center;'>{t:.4f}</td>"
-                f"<td style='padding: 6px 12px; border: 1px solid #ccc; text-align: center;'>{v:.4f}</td>"
-                f"<td style='padding: 6px 12px; border: 1px solid #ccc; text-align: center;'>{te:.4f}</td>"
-                f"</tr>"
-            )
-            rows.append(row)
+    for metric_key in sorted(all_metrics["training"].keys()):
+        if metric_key in all_metrics["validation"] and metric_key in all_metrics["test"]:
+            display_name = METRIC_DISPLAY_NAMES.get(metric_key, metric_key.replace('_', ' ').title())
+            t = all_metrics["training"].get(metric_key)
+            v = all_metrics["validation"].get(metric_key)
+            te = all_metrics["test"].get(metric_key)
+            if all(x is not None for x in [t, v, te]):
+                rows.append([display_name, f"{t:.4f}", f"{v:.4f}", f"{te:.4f}"])
 
     if not rows:
-        return "<p><em>No metric values found.</em></p>"
+        return "<table><tr><td>No metric values found.</td></tr></table>"
 
-    return (
+    html = (
         "<h2 style='text-align: center;'>Model Performance Summary</h2>"
         "<div style='display: flex; justify-content: center;'>"
-        "<table style='border-collapse: collapse; width: 80%; table-layout: fixed;'>"
-        "<colgroup>"
-        "<col style='width: 40%;'>"
-        "<col style='width: 20%;'>"
-        "<col style='width: 20%;'>"
-        "<col style='width: 20%;'>"
-        "</colgroup>"
+        "<table style='border-collapse: collapse; table-layout: auto;'>"
         "<thead><tr>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: left;'>Metric</th>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Train</th>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Validation</th>"
-        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center;'>Test</th>"
-        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div><br>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Train</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Validation</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Test</th>"
+        "</tr></thead><tbody>"
     )
+    for row in rows:
+        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
+    html += "</tbody></table></div><br>"
+    return html
+
+
+def format_train_val_stats_table_html(train_stats: dict, test_stats: dict) -> str:
+    """Formats an HTML table for training and validation metrics.
+
+    Args:
+        train_stats (dict): Training statistics.
+        test_stats (dict): Test statistics.
+
+    Returns:
+        str: HTML table string.
+    """
+    output_type = detect_output_type(test_stats)
+    all_metrics = extract_metrics_from_json(train_stats, test_stats, output_type)
+    rows = []
+    for metric_key in sorted(all_metrics["training"].keys()):
+        if metric_key in all_metrics["validation"]:
+            display_name = METRIC_DISPLAY_NAMES.get(metric_key, metric_key.replace('_', ' ').title())
+            t = all_metrics["training"].get(metric_key)
+            v = all_metrics["validation"].get(metric_key)
+            if t is not None and v is not None:
+                rows.append([display_name, f"{t:.4f}", f"{v:.4f}"])
+
+    if not rows:
+        return "<table><tr><td>No metric values found for Train/Validation.</td></tr></table>"
+
+    html = (
+        "<h2 style='text-align: center;'>Train/Validation Performance Summary</h2>"
+        "<div style='display: flex; justify-content: center;'>"
+        "<table style='border-collapse: collapse; table-layout: auto;'>"
+        "<thead><tr>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Train</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Validation</th>"
+        "</tr></thead><tbody>"
+    )
+    for row in rows:
+        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
+    html += "</tbody></table></div><br>"
+    return html
+
+
+def format_test_merged_stats_table_html(test_metrics: Dict[str, Optional[float]]) -> str:
+    """Formats an HTML table for test metrics.
+
+    Args:
+        test_metrics (Dict[str, Optional[float]]): Test metrics.
+
+    Returns:
+        str: HTML table string.
+    """
+    rows = []
+    for key in sorted(test_metrics.keys()):
+        display_name = METRIC_DISPLAY_NAMES.get(key, key.replace('_', ' ').title())
+        value = test_metrics[key]
+        if value is not None:
+            rows.append([display_name, f"{value:.4f}"])
+
+    if not rows:
+        return "<table><tr><td>No test metric values found.</td></tr></table>"
+
+    html = (
+        "<h2 style='text-align: center;'>Test Performance Summary</h2>"
+        "<div style='display: flex; justify-content: center;'>"
+        "<table style='border-collapse: collapse; table-layout: auto;'>"
+        "<thead><tr>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: left; white-space: nowrap;'>Metric</th>"
+        "<th style='padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;'>Test</th>"
+        "</tr></thead><tbody>"
+    )
+    for row in rows:
+        html += generate_table_row(row, "padding: 10px; border: 1px solid #ccc; text-align: center; white-space: nowrap;")
+    html += "</tbody></table></div><br>"
+    return html
 
 
 def build_tabbed_html(
         metrics_html: str,
-        train_viz_html: str,
-        test_viz_html: str) -> str:
+        train_val_html: str,
+        test_html: str) -> str:
     return f"""
 <style>
 .tabs {{
@@ -304,19 +633,19 @@ def build_tabbed_html(
 </style>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('metrics')"> Config & Metrics</div>
-  <div class="tab" onclick="showTab('trainval')"> Train/Validation Plots</div>
-  <div class="tab" onclick="showTab('test')"> Test Plots</div>
+  <div class="tab active" onclick="showTab('metrics')"> Config & Results Summary</div>
+  <div class="tab" onclick="showTab('trainval')"> Train/Validation Results</div>
+  <div class="tab" onclick="showTab('test')"> Test Results</div>
 </div>
 
 <div id="metrics" class="tab-content active">
   {metrics_html}
 </div>
 <div id="trainval" class="tab-content">
-  {train_viz_html}
+  {train_val_html}
 </div>
 <div id="test" class="tab-content">
-  {test_viz_html}
+  {test_html}
 </div>
 
 <script>
@@ -330,6 +659,8 @@ function showTab(id) {{
 """
 
 
+
+
 def split_data_0_2(
     df: pd.DataFrame,
     split_column: str,
@@ -337,13 +668,7 @@ def split_data_0_2(
     random_state: int = 42,
     label_column: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
-    Given a DataFrame whose split_column only contains {0,2}, re-assign
-    a portion of the 0s to become 1s (validation). Returns a fresh DataFrame.
-    """
-    # Work on a copy
     out = df.copy()
-    # Ensure split col is integer dtype
     out[split_column] = pd.to_numeric(out[split_column], errors="coerce").astype(int)
 
     idx_train = out.index[out[split_column] == 0].tolist()
@@ -352,17 +677,14 @@ def split_data_0_2(
         logger.info("No rows with split=0; nothing to do.")
         return out
 
-    # Determine stratify array if possible
     stratify_arr = None
     if label_column and label_column in out.columns:
-        # Only stratify if at least two classes and enough samples
         label_counts = out.loc[idx_train, label_column].value_counts()
         if label_counts.size > 1 and (label_counts.min() * validation_size) >= 1:
             stratify_arr = out.loc[idx_train, label_column]
         else:
             logger.warning("Cannot stratify (too few labels); splitting without stratify.")
 
-    # Edge cases
     if validation_size <= 0:
         logger.info("validation_size <= 0; keeping all as train.")
         return out
@@ -371,7 +693,6 @@ def split_data_0_2(
         out.loc[idx_train, split_column] = 1
         return out
 
-    # Do the split
     try:
         train_idx, val_idx = train_test_split(
             idx_train,
@@ -388,19 +709,13 @@ def split_data_0_2(
             stratify=None
         )
 
-    # Assign new splits
     out.loc[train_idx, split_column] = 0
     out.loc[val_idx, split_column] = 1
-    # idx_test stays at 2
-
-    # Cast back to a clean integer type
     out[split_column] = out[split_column].astype(int)
-    # print(out)
     return out
 
 
 class Backend(Protocol):
-    """Interface for a machine learning backend."""
     def prepare_config(
         self,
         config_params: Dict[str, Any],
@@ -432,18 +747,11 @@ class Backend(Protocol):
 
 
 class LudwigDirectBackend:
-    """
-    Backend for running Ludwig experiments directly via the internal experiment_cli function.
-    """
-
     def prepare_config(
         self,
         config_params: Dict[str, Any],
         split_config: Dict[str, Any],
     ) -> str:
-        """
-        Build and serialize the Ludwig YAML configuration.
-        """
         logger.info("LudwigDirectBackend: Preparing YAML configuration.")
 
         model_name = config_params.get("model_name", "resnet18")
@@ -461,7 +769,6 @@ class LudwigDirectBackend:
             logger.warning("Setting trainable=True to train the model from scratch.")
             trainable = True
 
-        # Encoder setup
         raw_encoder = MODEL_ENCODER_TEMPLATES.get(model_name, model_name)
         if isinstance(raw_encoder, dict):
             encoder_config = {
@@ -472,9 +779,22 @@ class LudwigDirectBackend:
         else:
             encoder_config = {"type": raw_encoder}
 
-        # Trainer & optimizer
-        # optimizer = {"type": "adam", "learning_rate": 5e-5} if fine_tune else {"type": "adam"}
         batch_size_cfg = batch_size or "auto"
+
+        label_column_path = config_params.get("label_column_data_path")
+        if label_column_path is not None and Path(label_column_path).exists():
+            # Read label data to determine cardinality
+            try:
+                label_series = pd.read_csv(label_column_path)[LABEL_COLUMN_NAME]
+                num_unique_labels = label_series.nunique()
+            except Exception as e:
+                logger.warning(f"Could not determine label cardinality, defaulting to 'binary': {e}")
+                num_unique_labels = 2
+        else:
+            logger.warning("label_column_data_path not provided, defaulting to 'binary'")
+            num_unique_labels = 2
+
+        output_type = "binary" if num_unique_labels == 2 else "category"
 
         conf: Dict[str, Any] = {
             "model_type": "ecd",
@@ -486,7 +806,7 @@ class LudwigDirectBackend:
                 }
             ],
             "output_features": [
-                {"name": LABEL_COLUMN_NAME, "type": "category"}
+                {"name": LABEL_COLUMN_NAME, "type": output_type}
             ],
             "combiner": {"type": "concat"},
             "trainer": {
@@ -518,9 +838,6 @@ class LudwigDirectBackend:
         output_dir: Path,
         random_seed: int = 42,
     ) -> None:
-        """
-        Invoke Ludwig's internal experiment_cli function to run the experiment.
-        """
         logger.info("LudwigDirectBackend: Starting experiment execution.")
 
         try:
@@ -556,11 +873,6 @@ class LudwigDirectBackend:
             raise
 
     def get_training_process(self, output_dir) -> float:
-        """
-        Retrieve the learning rate used in the most recent Ludwig run.
-        Returns:
-            float: learning rate (or None if not found)
-        """
         output_dir = Path(output_dir)
         exp_dirs = sorted(
             output_dir.glob("experiment_run*"),
@@ -585,11 +897,10 @@ class LudwigDirectBackend:
                 "epoch": data.get("epoch"),
             }
         except Exception as e:
-            self.logger.warning(f"Failed to read training progress info: {e}")
+            logger.warning(f"Failed to read training progress info: {e}")
             return {}
 
     def convert_parquet_to_csv(self, output_dir: Path):
-        """Convert the predictions Parquet file to CSV."""
         output_dir = Path(output_dir)
         exp_dirs = sorted(
             output_dir.glob("experiment_run*"),
@@ -609,9 +920,6 @@ class LudwigDirectBackend:
             logger.error(f"Error converting Parquet to CSV: {e}")
 
     def generate_plots(self, output_dir: Path) -> None:
-        """
-        Generate _all_ registered Ludwig visualizations for the latest experiment run.
-        """
         logger.info("Generating all Ludwig visualizations…")
 
         test_plots = {
@@ -638,7 +946,6 @@ class LudwigDirectBackend:
             'compare_classifiers_performance_subset',
         }
 
-        # 1) find the most recent experiment directory
         output_dir = Path(output_dir)
         exp_dirs = sorted(
             output_dir.glob("experiment_run*"),
@@ -649,7 +956,6 @@ class LudwigDirectBackend:
             return
         exp_dir = exp_dirs[-1]
 
-        # 2) ensure viz output subfolder exists
         viz_dir = exp_dir / "visualizations"
         viz_dir.mkdir(exist_ok=True)
         train_viz = viz_dir / "train"
@@ -657,17 +963,14 @@ class LudwigDirectBackend:
         train_viz.mkdir(parents=True, exist_ok=True)
         test_viz.mkdir(parents=True, exist_ok=True)
 
-        # 3) helper to check file existence
         def _check(p: Path) -> Optional[str]:
             return str(p) if p.exists() else None
 
-        # 4) gather standard Ludwig output files
         training_stats = _check(exp_dir / "training_statistics.json")
         test_stats = _check(exp_dir / TEST_STATISTICS_FILE_NAME)
         probs_path = _check(exp_dir / PREDICTIONS_PARQUET_FILE_NAME)
         gt_metadata = _check(exp_dir / "model" / TRAIN_SET_METADATA_FILE_NAME)
 
-        # 5) try to read original dataset & split file from description.json
         dataset_path = None
         split_file = None
         desc = exp_dir / DESCRIPTION_FILE_NAME
@@ -677,7 +980,6 @@ class LudwigDirectBackend:
             dataset_path = _check(Path(cfg.get("dataset", "")))
             split_file = _check(Path(get_split_path(cfg.get("dataset", ""))))
 
-        # 6) infer output feature name
         output_feature = ""
         if desc.exists():
             try:
@@ -689,7 +991,6 @@ class LudwigDirectBackend:
                 stats = json.load(f)
             output_feature = next(iter(stats.keys()), "")
 
-        # 7) loop through every registered viz
         viz_registry = get_visualizations_registry()
         for viz_name, viz_func in viz_registry.items():
             viz_dir_plot = None
@@ -726,15 +1027,11 @@ class LudwigDirectBackend:
             output_dir: str,
             config: dict,
             split_info: str) -> Path:
-        """
-        Assemble an HTML report from visualizations under train_val/ and test/ folders.
-        """
         cwd = Path.cwd()
         report_name = title.lower().replace(" ", "_") + "_report.html"
         report_path = cwd / report_name
         output_dir = Path(output_dir)
 
-        # Find latest experiment dir
         exp_dirs = sorted(output_dir.glob("experiment_run*"), key=lambda p: p.stat().st_mtime)
         if not exp_dirs:
             raise RuntimeError(f"No 'experiment*' dirs found in {output_dir}")
@@ -748,8 +1045,9 @@ class LudwigDirectBackend:
         html += f"<h1>{title}</h1>"
 
         metrics_html = ""
+        train_val_metrics_html = ""
+        test_metrics_html = ""
 
-        # Load and embed metrics table (training/val/test stats)
         try:
             train_stats_path = exp_dir / "training_statistics.json"
             test_stats_path = exp_dir / TEST_STATISTICS_FILE_NAME
@@ -758,11 +1056,13 @@ class LudwigDirectBackend:
                     train_stats = json.load(f)
                 with open(test_stats_path) as f:
                     test_stats = json.load(f)
-                output_feature = next(iter(train_stats.keys()), "")
-                if output_feature:
-                    metrics_html += format_stats_table_html(train_stats, test_stats)
+                output_type = detect_output_type(test_stats)  # Determine output type
+                all_metrics = extract_metrics_from_json(train_stats, test_stats, output_type)  # Pass output_type
+                metrics_html = format_stats_table_html(train_stats, test_stats)
+                train_val_metrics_html = format_train_val_stats_table_html(train_stats, test_stats)
+                test_metrics_html = format_test_merged_stats_table_html(all_metrics["test"])
         except Exception as e:
-            logger.warning(f"Could not load stats for HTML report: {e}")
+            logger.warning(f"Could not load stats for HTML report: {type(e).__name__}: {e}")
 
         config_html = ""
         training_progress = self.get_training_process(output_dir)
@@ -771,12 +1071,57 @@ class LudwigDirectBackend:
         except Exception as e:
             logger.warning(f"Could not load config for HTML report: {e}")
 
-        def render_img_section(title: str, dir_path: Path) -> str:
+        def render_img_section(title: str, dir_path: Path, output_type: str = None) -> str:
             if not dir_path.exists():
                 return f"<h2>{title}</h2><p><em>Directory not found.</em></p>"
-            imgs = sorted(dir_path.glob("*.png"))
+
+            imgs = list(dir_path.glob("*.png"))
             if not imgs:
                 return f"<h2>{title}</h2><p><em>No plots found.</em></p>"
+
+            if title == "Test Visualizations" and output_type == "binary":
+                order = [
+                    "confusion_matrix__label_top2.png",
+                    "roc_curves_from_prediction_statistics.png",
+                    "compare_performance_label.png",
+                    "confusion_matrix_entropy__label_top2.png",
+                ]
+                img_names = {img.name: img for img in imgs}
+                ordered_imgs = [img_names[fname] for fname in order if fname in img_names]
+                remaining = sorted([img for img in imgs if img.name not in order and img.name != "roc_curves.png"])
+                imgs = ordered_imgs + remaining
+
+            elif title == "Test Visualizations" and output_type == "category":
+                unwanted = {
+                    "compare_classifiers_multiclass_multimetric__label_best10.png",
+                    "compare_classifiers_multiclass_multimetric__label_top10.png",
+                    "compare_classifiers_multiclass_multimetric__label_worst10.png",
+                }
+                display_order = [
+                    "confusion_matrix__label_top10.png",
+                    "roc_curves.png",
+                    "compare_performance_label.png",
+                    "compare_classifiers_performance_from_prob.png",
+                    "compare_classifiers_multiclass_multimetric__label_sorted.png",
+                    "confusion_matrix_entropy__label_top10.png",
+                ]
+                img_names = {img.name: img for img in imgs if img.name not in unwanted}
+                ordered_imgs = [img_names[fname] for fname in display_order if fname in img_names]
+                # Append any remaining images not in display_order, alphabetically
+                remaining = sorted([img for img in img_names.values() if img.name not in display_order])
+                imgs = ordered_imgs + remaining
+
+            else:
+                # Fallback: alphabetical, but filter unwanted images for category
+                if output_type == "category":
+                    unwanted = {
+                        "compare_classifiers_multiclass_multimetric__label_best10.png",
+                        "compare_classifiers_multiclass_multimetric__label_top10.png",
+                        "compare_classifiers_multiclass_multimetric__label_worst10.png",
+                    }
+                    imgs = sorted([img for img in imgs if img.name not in unwanted])
+                else:
+                    imgs = sorted(imgs)
 
             section_html = f"<h2 style='text-align: center;'>{title}</h2><div>"
             for img in imgs:
@@ -791,9 +1136,14 @@ class LudwigDirectBackend:
             section_html += "</div>"
             return section_html
 
-        train_plots_html = render_img_section("Training & Validation Visualizations", train_viz_dir)
-        test_plots_html = render_img_section("Test Visualizations", test_viz_dir)
-        html += build_tabbed_html(config_html + metrics_html, train_plots_html, test_plots_html)
+        button_html = '<button onclick="openMetricsHelp()">Model Evaluation Metrics — Help Guide</button><br><br>'
+        tab1_content = button_html + config_html + metrics_html
+        tab2_content = button_html + train_val_metrics_html + render_img_section("Training & Validation Visualizations", train_viz_dir)
+        tab3_content = button_html + test_metrics_html + render_img_section("Test Visualizations", test_viz_dir, output_type)
+
+        tabbed_html = build_tabbed_html(tab1_content, tab2_content, tab3_content)
+        modal_html = get_metrics_help_modal()
+        html += tabbed_html + modal_html
         html += get_html_closing()
 
         try:
@@ -806,18 +1156,7 @@ class LudwigDirectBackend:
 
         return report_path
 
-
 class WorkflowOrchestrator:
-    """
-    Manages the image-classification workflow:
-      1. Creates temp dirs
-      2. Extracts images
-      3. Prepares data (CSV + splits)
-      4. Renders a backend config
-      5. Runs the experiment
-      6. Cleans up
-    """
-
     def __init__(self, args: argparse.Namespace, backend: Backend):
         self.args = args
         self.backend = backend
@@ -826,7 +1165,6 @@ class WorkflowOrchestrator:
         logger.info(f"Orchestrator initialized with backend: {type(backend).__name__}")
 
     def _create_temp_dirs(self) -> None:
-        """Create temporary output and image extraction directories."""
         try:
             self.temp_dir = Path(tempfile.mkdtemp(
                 dir=self.args.output_dir,
@@ -840,7 +1178,6 @@ class WorkflowOrchestrator:
             raise
 
     def _extract_images(self) -> None:
-        """Extract images from ZIP into the temp image directory."""
         if self.image_extract_dir is None:
             raise RuntimeError("Temp image directory not initialized.")
         logger.info(f"Extracting images from {self.args.image_zip} → {self.image_extract_dir}")
@@ -853,16 +1190,9 @@ class WorkflowOrchestrator:
             raise
 
     def _prepare_data(self) -> Tuple[Path, Dict[str, Any]]:
-        """
-        Load CSV, update image paths, handle splits, and write prepared CSV.
-        Returns:
-            final_csv_path: Path to the prepared CSV
-            split_config: Dict for backend split settings
-        """
         if not self.temp_dir or not self.image_extract_dir:
             raise RuntimeError("Temp dirs not initialized before data prep.")
 
-        # 1) Load
         try:
             df = pd.read_csv(self.args.csv_file)
             logger.info(f"Loaded CSV: {self.args.csv_file}")
@@ -870,13 +1200,11 @@ class WorkflowOrchestrator:
             logger.error("Error loading CSV file", exc_info=True)
             raise
 
-        # 2) Validate columns
         required = {IMAGE_PATH_COLUMN_NAME, LABEL_COLUMN_NAME}
         missing = required - set(df.columns)
         if missing:
             raise ValueError(f"Missing CSV columns: {', '.join(missing)}")
 
-        # 3) Update image paths
         try:
             df[IMAGE_PATH_COLUMN_NAME] = df[IMAGE_PATH_COLUMN_NAME].apply(
                 lambda p: str((self.image_extract_dir / p).resolve())
@@ -885,7 +1213,6 @@ class WorkflowOrchestrator:
             logger.error("Error updating image paths", exc_info=True)
             raise
 
-        # 4) Handle splits
         if SPLIT_COLUMN_NAME in df.columns:
             df, split_config, split_info = self._process_fixed_split(df)
         else:
@@ -899,7 +1226,6 @@ class WorkflowOrchestrator:
                 f"{[int(p*100) for p in self.args.split_probabilities]}% for train/val/test."
             )
 
-        # 5) Write out prepared CSV
         final_csv = TEMP_CSV_FILENAME
         try:
             df.to_csv(final_csv, index=False)
@@ -911,7 +1237,6 @@ class WorkflowOrchestrator:
         return final_csv, split_config, split_info
 
     def _process_fixed_split(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Process a fixed split column (0=train,1=val,2=test)."""
         logger.info(f"Fixed split column '{SPLIT_COLUMN_NAME}' detected.")
         try:
             col = df[SPLIT_COLUMN_NAME]
@@ -935,7 +1260,6 @@ class WorkflowOrchestrator:
                     f"reassigned {self.args.validation_size * 100:.1f}% "
                     "of the training set (originally labeled 0) to validation (labeled 1)."
                 )
-
                 logger.info("Applied custom 0/2 split.")
             elif unique.issubset({0, 1, 2}):
                 split_info = "Used user-defined split column from CSV."
@@ -944,13 +1268,11 @@ class WorkflowOrchestrator:
                 raise ValueError(f"Unexpected split values: {unique}")
 
             return df, {"type": "fixed", "column": SPLIT_COLUMN_NAME}, split_info
-
         except Exception:
             logger.error("Error processing fixed split", exc_info=True)
             raise
 
     def _cleanup_temp_dirs(self) -> None:
-        """Remove any temporary directories."""
         if self.temp_dir and self.temp_dir.exists():
             logger.info(f"Cleaning up temp directory: {self.temp_dir}")
             shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -958,7 +1280,6 @@ class WorkflowOrchestrator:
         self.image_extract_dir = None
 
     def run(self) -> None:
-        """Execute the full workflow end-to-end."""
         logger.info("Starting workflow...")
         self.args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -980,6 +1301,7 @@ class WorkflowOrchestrator:
                 "learning_rate": self.args.learning_rate,
                 "random_seed": self.args.random_seed,
                 "early_stop": self.args.early_stop,
+                "label_column_data_path": csv_path,
             }
             yaml_str = self.backend.prepare_config(backend_args, split_cfg)
 
@@ -1007,7 +1329,6 @@ class WorkflowOrchestrator:
         except Exception:
             logger.error("Workflow execution failed", exc_info=True)
             raise
-
         finally:
             self._cleanup_temp_dirs()
 
@@ -1021,7 +1342,6 @@ def parse_learning_rate(s):
 
 class SplitProbAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        # values is a list of three floats
         train, val, test = values
         total = train + val + test
         if abs(total - 1.0) > 1e-6:
@@ -1033,7 +1353,6 @@ class SplitProbAction(argparse.Action):
 
 
 def main():
-
     parser = argparse.ArgumentParser(
         description="Image Classification Learner with Pluggable Backends"
     )
@@ -1110,7 +1429,6 @@ def main():
         parser.error(f"ZIP not found: {args.image_zip}")
 
     # --- Instantiate Backend and Orchestrator ---
-    # Use the new LudwigDirectBackend
     backend_instance = LudwigDirectBackend()
     orchestrator = WorkflowOrchestrator(args, backend_instance)
 
