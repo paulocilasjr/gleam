@@ -107,22 +107,30 @@ class FeatureImportanceAnalyzer:
         self.plots['tree_importance'] = plot_path
 
     def save_shap_values(self):
-        # Use existing best_model if available
         model = self.best_model or self.exp.get_config('best_model')
         X_transformed = self.exp.get_config('X_transformed')
         tree_classes = (
             "LGBM", "XGB", "CatBoost", "RandomForest", "DecisionTree", "ExtraTrees", "HistGradientBoosting"
         )
         model_class_name = model.__class__.__name__
-        self.shap_model_name = model_class_name   # <--- Store the model name
+        self.shap_model_name = model_class_name
+
+        # Ensure feature alignment
+        if hasattr(model, "feature_name_"):
+            used_features = model.feature_name_
+        elif hasattr(model, "booster_") and hasattr(model.booster_, "feature_name"):
+            used_features = model.booster_.feature_name()
+        else:
+            used_features = X_transformed.columns
 
         if any(tc in model_class_name for tc in tree_classes):
             explainer = shap.TreeExplainer(model)
-            shap_values = explainer.shap_values(X_transformed)
-            plot_X = X_transformed
+            X_shap = X_transformed[used_features]
+            shap_values = explainer.shap_values(X_shap)
+            plot_X = X_shap
             plot_title = f"SHAP Summary for {model_class_name} (TreeExplainer)"
         else:
-            sampled_X = X_transformed.sample(100, random_state=42)
+            sampled_X = X_transformed[used_features].sample(100, random_state=42)
             explainer = shap.KernelExplainer(model.predict, sampled_X)
             shap_values = explainer.shap_values(sampled_X)
             plot_X = sampled_X
@@ -130,10 +138,10 @@ class FeatureImportanceAnalyzer:
 
         shap.summary_plot(shap_values, plot_X, show=False)
         plt.title(plot_title)
-        plot_path = os.path.join(self.output_dir, 'shap_summary.png')
+        plot_path = os.path.join(self.output_dir, "shap_summary.png")
         plt.savefig(plot_path)
         plt.close()
-        self.plots['shap_summary'] = plot_path
+        self.plots["shap_summary"] = plot_path
 
     def generate_html_report(self):
         LOG.info("Generating HTML report")

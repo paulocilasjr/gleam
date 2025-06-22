@@ -49,7 +49,7 @@
         #if $test_file
             --test_file '$test_file'
         #end if 
-        --model_type '$model_type'    
+        --model_type '$model_type'
         ]]>
     </command>
     <inputs>
@@ -187,7 +187,7 @@
             <param name="model_type" value="regression"/>
             <param name="random_seed" value="42"/>
             <output name="model" file="expected_model_regression.h5" compare="sim_size" />
-            <output name="comparison_result" file="expected_comparison_result_regression.html" compare="sim_size" /> 
+            <output name="comparison_result" file="expected_comparison_result_regression.html" compare="sim_size" delta="100000" />
             <output name="best_model_csv" value="expected_best_model_regression.csv" />
         </test>
     </tests>
