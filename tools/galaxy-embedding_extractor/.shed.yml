@@ -1,0 +1,23 @@
+categories:
+  - Machine Learning
+owner: goeckslab
+remote_repository_url: https://github.com/goeckslab/gleam.git
+homepage_url: https://github.com/goeckslab/gleam/tree/main/tools/embedding_extractor
+
+auto_tool_repositories:
+  name_template: "{{ tool_id }}"
+  description_template: "{tool_name} tool using PyTorch and Torchvision"
+
+suite:
+  name: suite_embedding_extractor
+  description: A tool for extracting deep image embeddings using pretrained PyTorch models.
+  long_description: |
+    The Embedding Extractor tool integrates PyTorch and Torchvision within the Galaxy platform
+    to generate high-quality feature embeddings from image data using pretrained convolutional
+    neural networks. It supports a variety of backbone architectures (e.g., ResNet, VGG, EfficientNet)
+    and provides outputs suitable for downstream machine learning and clustering analyses.
+
+    Designed for researchers working with image-based biomedical datasets,
+    this tool simplifies the feature extraction process by providing a user-friendly interface
+    and eliminating the need for manual model coding. The Embedding Extractor
+    is ideal for applications such as image classification, similarity analysis, and feature visualization.
