@@ -6,6 +6,7 @@ def get_html_template():
     return """
     <html>
     <head>
+        <meta charset="UTF-8">
         <title>Galaxy-Ludwig Report</title>
         <style>
           body {
