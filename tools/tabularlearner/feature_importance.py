@@ -3,6 +3,7 @@ import logging
 import os
 
 import matplotlib.pyplot as plt
+import shap
 import pandas as pd
 from pycaret.classification import ClassificationExperiment
 from pycaret.regression import RegressionExperiment
@@ -49,15 +50,6 @@ class FeatureImportanceAnalyzer:
         LOG.info(self.exp)
         self.exp.setup(self.data, **setup_params)
 
-    # def save_coefficients(self):
-    #     model = self.exp.create_model('lr')
-    #     coef_df = pd.DataFrame({
-    #         'Feature': self.data.columns.drop(self.target),
-    #         'Coefficient': model.coef_[0]
-    #     })
-    #     coef_html = coef_df.to_html(index=False)
-    #     return coef_html
-
     def save_tree_importance(self):
         model = self.exp.create_model('rf')
         importances = model.feature_importances_
@@ -71,7 +63,8 @@ class FeatureImportanceAnalyzer:
         plt.figure(figsize=(10, 6))
         plt.barh(
             feature_importances['Feature'],
-            feature_importances['Importance'])
+            feature_importances['Importance']
+        )
         plt.xlabel('Importance')
         plt.title('Feature Importance (Random Forest)')
         plot_path = os.path.join(
@@ -83,7 +76,6 @@ class FeatureImportanceAnalyzer:
 
     def save_shap_values(self):
         model = self.exp.create_model('lightgbm')
-        import shap
         explainer = shap.Explainer(model)
         shap_values = explainer.shap_values(
             self.exp.get_config('X_transformed'))
@@ -114,15 +106,8 @@ class FeatureImportanceAnalyzer:
             encoded_image = self.encode_image_to_base64(plot_path)
             plots_html += f"""
             <div class="plot" id="{plot_name}">
-                <h2>{'Feature importance analysis from a'
-                    'trained Random Forest'
-                    if plot_name == 'tree_importance'
-                    else 'SHAP Summary from a trained lightgbm'}</h2>
-                <h3>{'Use gini impurity for'
-                    'calculating feature importance for classification'
-                    'and Variance Reduction for regression'
-                  if plot_name == 'tree_importance'
-                  else ''}</h3>
+                <h2>{'Feature importance analysis from a trained Random Forest'if plot_name == 'tree_importance'else 'SHAP Summary from a trained lightgbm'}</h2>
+                <h3>{'Use gini impurity for calculating feature importance for classification and Variance Reduction for regression' if plot_name == 'tree_importance' else ''}</h3>
                 <img src="data:image/png;base64,
                 {encoded_image}" alt="{plot_name}">
             </div>
