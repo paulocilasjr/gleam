@@ -169,7 +169,12 @@
             <param name="remove_outliers" value="true"/>
             <param name="remove_multicollinearity" value="true"/>
             <output name="model" file="expected_model_classification_customized.h5" compare="sim_size"/>
-            <output name="comparison_result" file="expected_comparison_result_classification_customized.html" compare="sim_size" /> 
+            <output name="comparison_result" file="expected_comparison_result_classification_customized.html" compare="contains" />
+                <assert_contents>
+                    <has_text text="Validation Result Summary" />
+                    <has_text text="Test Results" />
+                    <has_text text="Feature Importance" />
+                </assert_contents>
             <output name="best_model_csv" value="expected_best_model_classification_customized.csv" />
         </test>
         <test>
@@ -178,7 +183,12 @@
             <param name="model_type" value="classification"/>
             <param name="random_seed" value="42"/>
             <output name="model" file="expected_model_classification.h5" compare="sim_size"/>
-            <output name="comparison_result" file="expected_comparison_result_classification.html" compare="sim_size" /> 
+            <output name="comparison_result" file="expected_comparison_result_classification.html" compare="contains" /> 
+                <assert_contents>
+                    <has_text text="Validation Result Summary" />
+                    <has_text text="Test Results" />
+                    <has_text text="Feature Importance" />
+                </assert_contents>
             <output name="best_model_csv" value="expected_best_model_classification.csv" />
         </test>
         <test>
@@ -187,7 +197,12 @@
             <param name="model_type" value="regression"/>
             <param name="random_seed" value="42"/>
             <output name="model" file="expected_model_regression.h5" compare="sim_size" />
-            <output name="comparison_result" file="expected_comparison_result_regression.html" compare="sim_size" delta="100000" />
+            <output name="comparison_result" file="expected_comparison_result_regression.html" compare="contains" />
+                <assert_contents>
+                    <has_text text="Validation Result Summary" />
+                    <has_text text="Test Results" />
+                    <has_text text="Feature Importance" />
+                </assert_contents>
             <output name="best_model_csv" value="expected_best_model_regression.csv" />
         </test>
     </tests>
