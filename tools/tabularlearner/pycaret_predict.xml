@@ -37,9 +37,8 @@
             <output name="prediction" file="predictions_classification.csv" />
             <output name="report">
                 <assert_contents>
-                    <has_text text="validation result summary" />
-                    <has_text text="test results" />
-                    <has_text text="feature importance" />
+                    <has_text text="Metrics" />
+                    <has_text text="Plots" />
                 </assert_contents>
             </output>
         </test>
@@ -51,9 +50,8 @@
             <output name="prediction" file="predictions_regression.csv" />
             <output name="report">
                 <assert_contents>
-                    <has_text text="validation result summary" />
-                    <has_text text="test results" />
-                    <has_text text="feature importance" />
+                    <has_text text="Metrics" />
+                    <has_text text="Plots" />
                 </assert_contents>
             </output>
         </test>
