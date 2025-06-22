@@ -7,6 +7,7 @@ import h5py
 import joblib
 import numpy as np
 import pandas as pd
+from feature_help_modal import get_feature_metrics_help_modal
 from feature_importance import FeatureImportanceAnalyzer
 from sklearn.metrics import average_precision_score
 from utils import get_html_closing, get_html_template
@@ -16,7 +17,6 @@ LOG = logging.getLogger(__name__)
 
 
 class BaseModelTrainer:
-
     def __init__(
         self,
         input_file,
@@ -238,27 +238,24 @@ class BaseModelTrainer:
         length = len(self.plots)
         for i, (plot_name, plot_path) in enumerate(self.plots.items()):
             encoded_image = self.encode_image_to_base64(plot_path)
-            plots_html += f"""
-            <div class="plot">
-                <h3>{plot_name.capitalize()}</h3>
-                <img src="data:image/png;base64,{encoded_image}"
-                    alt="{plot_name}">
-            </div>
-            """
+            plots_html += (
+                f'<div class="plot">'
+                f"<h3>{plot_name.capitalize()}</h3>"
+                f'<img src="data:image/png;base64,{encoded_image}" alt="{plot_name}">'
+                f"</div>"
+            )
             if i < length - 1:
                 plots_html += "<hr>"
 
         tree_plots = ""
         for i, tree in enumerate(self.trees):
             if tree:
-                tree_plots += f"""
-                <div class="plot">
-                    <h3>Tree {i + 1}</h3>
-                    <img src="data:image/png;base64,
-                    {tree}"
-                    alt="tree {i + 1}">
-                </div>
-                """
+                tree_plots += (
+                    f'<div class="plot">'
+                    f"<h3>Tree {i + 1}</h3>"
+                    f'<img src="data:image/png;base64,{tree}" alt="tree {i + 1}">'
+                    f"</div>"
+                )
 
         analyzer = FeatureImportanceAnalyzer(
             data=self.data,
@@ -270,114 +267,140 @@ class BaseModelTrainer:
         )
         feature_importance_html = analyzer.run()
 
-        html_content = f"""
-        {get_html_template()}
-            <h1>Tabular Learner Model Report</h1>
-            <div class="tabs">
-                <div class="tab" onclick="openTab(event, 'summary')">
-                Validation Result & Config</div>
-                <div class="tab" onclick="openTab(event, 'plots')">
-                Test Result</div>
-                <div class="tab" onclick="openTab(event, 'feature')">
-                Feature Importance</div>
-        """
-        if self.plots_explainer_html:
-            html_content += """
-                <div class="tab" onclick="openTab(event, 'explainer')">
-                Explainer Plots</div>
-            """
-        html_content += f"""
-            </div>
-            <div id="summary" class="tab-content">
-                <h2>Model Metrics from Cross-Validation Set</h2>
-                <h2>Best Model: {model_name}</h2>
-                <h5>The best model is selected by: Accuracy (Classification)
-                or R2 (Regression).</h5>
-                {self.results.to_html(index=False, classes='table sortable')}
-                <h2>Best Model's Hyperparameters</h2>
-                {best_model_params.to_html(index=False, header=True, classes='table sortable')}
-                <h2>Setup Parameters</h2>
-                {setup_params_table.to_html(index=False, header=True, classes='table sortable')}
-                <h5>If you want to know all the experiment setup parameters,
-                  please check the PyCaret documentation for
-                  the classification/regression <code>exp</code> function.</h5>
-            </div>
-            <div id="plots" class="tab-content">
-                <h2>Best Model: {model_name}</h2>
-                <h5>The best model is selected by: Accuracy (Classification)
-                or R2 (Regression).</h5>
-                <h2>Test Metrics</h2>
-                {self.test_result_df.to_html(index=False)}
+        # --- Feature Metrics Help Button ---
+        feature_metrics_button_html = (
+            '<button class="help-modal-btn" id="openFeatureMetricsHelp" style="margin-bottom:12px;">'
+            "Help: Metrics Guide"
+            "</button>"
+            "<style>"
+            ".help-modal-btn {"
+            "background-color: #17623b;"
+            "color: #fff;"
+            "border: none;"
+            "border-radius: 24px;"
+            "padding: 10px 28px;"
+            "font-size: 1.1rem;"
+            "font-weight: bold;"
+            "letter-spacing: 0.03em;"
+            "cursor: pointer;"
+            "transition: background 0.2s, box-shadow 0.2s;"
+            "box-shadow: 0 2px 8px rgba(23,98,59,0.07);"
+            "}"
+            ".help-modal-btn:hover, .help-modal-btn:focus {"
+            "background-color: #21895e;"
+            "outline: none;"
+            "box-shadow: 0 4px 16px rgba(23,98,59,0.14);"
+            "}"
+            "</style>"
+        )
 
-                <h2>Test Plots</h2>
-                {plots_html}
-            </div>
-            <div id="feature" class="tab-content">
-                {feature_importance_html}
-            </div>
-        """
+        html_content = (
+            f"{get_html_template()}"
+            "<h1>Tabular Learner Model Report</h1>"
+            f"{feature_metrics_button_html}"
+            '<div class="tabs">'
+            '<div class="tab" onclick="openTab(event, \'summary\')">'
+            "Validation Result Summary & Config</div>"
+            '<div class="tab" onclick="openTab(event, \'plots\')">'
+            "Test Results</div>"
+            '<div class="tab" onclick="openTab(event, \'feature\')">'
+            "Feature Importance</div>"
+        )
         if self.plots_explainer_html:
-            html_content += f"""
-            <div id="explainer" class="tab-content">
-                {self.plots_explainer_html}
-                {tree_plots}
-            </div>
-            """
-        html_content += """
-        <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var tables = document.querySelectorAll("table.sortable");
-            tables.forEach(function(table) {
-                var headers = table.querySelectorAll("th");
-                headers.forEach(function(header, index) {
-                    header.style.cursor = "pointer";
-                    // Add initial arrow (up) to indicate sortability, use Unicode ↑ (U+2191)
-                    header.innerHTML += '<span class="sort-arrow"> ↑</span>';
-                    header.addEventListener("click", function() {
-                        var direction = this.getAttribute(
-                            "data-sort-direction"
-                        ) || "asc";
-                        // Reset arrows in all headers of this table
-                        headers.forEach(function(h) {
-                            var arrow = h.querySelector(".sort-arrow");
-                            if (arrow) arrow.textContent = " ↑";
-                        });
-                        // Set arrow for clicked header
-                        var arrow = this.querySelector(".sort-arrow");
-                        arrow.textContent = direction === "asc" ? " ↓" : " ↑";
-                        sortTable(table, index, direction);
-                        this.setAttribute("data-sort-direction",
-                        direction === "asc" ? "desc" : "asc");
-                    });
-                });
-            });
-        });
-
-        function sortTable(table, colNum, direction) {
-            var tb = table.tBodies[0];
-            var tr = Array.prototype.slice.call(tb.rows, 0);
-            var multiplier = direction === "asc" ? 1 : -1;
-            tr = tr.sort(function(a, b) {
-                var aText = a.cells[colNum].textContent.trim();
-                var bText = b.cells[colNum].textContent.trim();
-                // Remove arrow from text comparison
-                aText = aText.replace(/[↑↓]/g, '').trim();
-                bText = bText.replace(/[↑↓]/g, '').trim();
-                if (!isNaN(aText) && !isNaN(bText)) {
-                    return multiplier * (
-                        parseFloat(aText) - parseFloat(bText)
-                    );
-                } else {
-                    return multiplier * aText.localeCompare(bText);
-                }
-            });
-            for (var i = 0; i < tr.length; ++i) tb.appendChild(tr[i]);
-        }
-        </script>
-        """
-        html_content += f"""
-        {get_html_closing()}
-        """
+            html_content += (
+                '<div class="tab" onclick="openTab(event, \'explainer\')">'
+                "Explainer Plots</div>"
+            )
+        html_content += (
+            "</div>"
+            '<div id="summary" class="tab-content">'
+            "<h2>Model Metrics from Cross-Validation Set</h2>"
+            f"<h2>Best Model: {model_name}</h2>"
+            "<h5>The best model is selected by: Accuracy (Classification)"
+            " or R2 (Regression).</h5>"
+            f"{self.results.to_html(index=False, classes='table sortable')}"
+            "<h2>Best Model's Hyperparameters</h2>"
+            f"{best_model_params.to_html(index=False, header=True, classes='table sortable')}"
+            "<h2>Setup Parameters</h2>"
+            f"{setup_params_table.to_html(index=False, header=True, classes='table sortable')}"
+            "<h5>If you want to know all the experiment setup parameters,"
+            " please check the PyCaret documentation for"
+            " the classification/regression <code>exp</code> function.</h5>"
+            "</div>"
+            '<div id="plots" class="tab-content">'
+            f"<h2>Best Model: {model_name}</h2>"
+            "<h5>The best model is selected by: Accuracy (Classification)"
+            " or R2 (Regression).</h5>"
+            "<h2>Test Metrics</h2>"
+            f"{self.test_result_df.to_html(index=False)}"
+            "<h2>Test Results</h2>"
+            f"{plots_html}"
+            "</div>"
+            '<div id="feature" class="tab-content">'
+            f"{feature_importance_html}"
+            "</div>"
+        )
+        if self.plots_explainer_html:
+            html_content += (
+                '<div id="explainer" class="tab-content">'
+                f"{self.plots_explainer_html}"
+                f"{tree_plots}"
+                "</div>"
+            )
+        html_content += (
+            "<script>"
+            "document.addEventListener(\"DOMContentLoaded\", function() {"
+            "var tables = document.querySelectorAll(\"table.sortable\");"
+            "tables.forEach(function(table) {"
+            "var headers = table.querySelectorAll(\"th\");"
+            "headers.forEach(function(header, index) {"
+            "header.style.cursor = \"pointer\";"
+            "// Add initial arrow (up) to indicate sortability, use Unicode ↑ (U+2191)"
+            "header.innerHTML += '<span class=\"sort-arrow\"> ↑</span>';"
+            "header.addEventListener(\"click\", function() {"
+            "var direction = this.getAttribute("
+            "\"data-sort-direction\""
+            ") || \"asc\";"
+            "// Reset arrows in all headers of this table"
+            "headers.forEach(function(h) {"
+            "var arrow = h.querySelector(\".sort-arrow\");"
+            "if (arrow) arrow.textContent = \" ↑\";"
+            "});"
+            "// Set arrow for clicked header"
+            "var arrow = this.querySelector(\".sort-arrow\");"
+            "arrow.textContent = direction === \"asc\" ? \" ↓\" : \" ↑\";"
+            "sortTable(table, index, direction);"
+            "this.setAttribute(\"data-sort-direction\","
+            "direction === \"asc\" ? \"desc\" : \"asc\");"
+            "});"
+            "});"
+            "});"
+            "});"
+            "function sortTable(table, colNum, direction) {"
+            "var tb = table.tBodies[0];"
+            "var tr = Array.prototype.slice.call(tb.rows, 0);"
+            "var multiplier = direction === \"asc\" ? 1 : -1;"
+            "tr = tr.sort(function(a, b) {"
+            "var aText = a.cells[colNum].textContent.trim();"
+            "var bText = b.cells[colNum].textContent.trim();"
+            "// Remove arrow from text comparison"
+            "aText = aText.replace(/[↑↓]/g, '').trim();"
+            "bText = bText.replace(/[↑↓]/g, '').trim();"
+            "if (!isNaN(aText) && !isNaN(bText)) {"
+            "return multiplier * ("
+            "parseFloat(aText) - parseFloat(bText)"
+            ");"
+            "} else {"
+            "return multiplier * aText.localeCompare(bText);"
+            "}"
+            "});"
+            "for (var i = 0; i < tr.length; ++i) tb.appendChild(tr[i]);"
+            "}"
+            "</script>"
+        )
+        # --- Add the Feature Metrics Help Modal ---
+        html_content += get_feature_metrics_help_modal()
+        html_content += f"{get_html_closing()}"
         with open(
             os.path.join(self.output_dir, "comparison_result.html"),
             "w",
@@ -391,7 +414,6 @@ class BaseModelTrainer:
     def generate_plots_explainer(self):
         raise NotImplementedError("Subclasses should implement this method")
 
-    # not working now
     def generate_tree_plots(self):
         from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
         from xgboost import XGBClassifier, XGBRegressor
@@ -413,7 +435,7 @@ class BaseModelTrainer:
             num_trees = len(self.best_model.get_booster().get_dump())
         else:
             LOG.warning("Tree plots not supported for this model type.")
-            return  # Prevents using undefined num_trees
+            return
 
         try:
             explainer = RandomForestExplainer(self.best_model, X_test, y_test)
