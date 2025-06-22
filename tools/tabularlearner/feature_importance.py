@@ -2,8 +2,8 @@ import base64
 import logging
 import os
 
-import shap
 import matplotlib.pyplot as plt
+import shap
 import pandas as pd
 from pycaret.classification import ClassificationExperiment
 from pycaret.regression import RegressionExperiment
@@ -47,7 +47,6 @@ class FeatureImportanceAnalyzer:
 
         self.plots = {}
 
-
     def setup_pycaret(self):
         if self.exp is not None and hasattr(self.exp, 'is_setup') and self.exp.is_setup:
             LOG.info("Experiment already set up. Skipping PyCaret setup.")
@@ -61,7 +60,6 @@ class FeatureImportanceAnalyzer:
             'system_log': False
         }
         self.exp.setup(self.data, **setup_params)
-
 
     def save_tree_importance(self):
         model = self.best_model or self.exp.get_config('best_model')
@@ -108,7 +106,6 @@ class FeatureImportanceAnalyzer:
         plt.close()
         self.plots['tree_importance'] = plot_path
 
-
     def save_shap_values(self):
         # Use existing best_model if available
         model = self.best_model or self.exp.get_config('best_model')
@@ -137,7 +134,6 @@ class FeatureImportanceAnalyzer:
         plt.savefig(plot_path)
         plt.close()
         self.plots['shap_summary'] = plot_path
-
 
     def generate_html_report(self):
         LOG.info("Generating HTML report")
@@ -168,11 +164,9 @@ class FeatureImportanceAnalyzer:
 
         return html_content
 
-
     def encode_image_to_base64(self, img_path):
         with open(img_path, 'rb') as img_file:
             return base64.b64encode(img_file.read()).decode('utf-8')
-
 
     def run(self):
         if self.exp is None or not hasattr(self.exp, 'is_setup') or not self.exp.is_setup:
