@@ -1174,8 +1174,7 @@ class LudwigDirectBackend:
             return section_html
 
         button_html = """
-        <button class="help-modal-btn openMetricsHelp>Model Evaluation Metrics — Help Guide</button>
-        <br><br>
+        <button class="help-modal-btn openMetricsHelp">Model Evaluation Metrics — Help Guide</button>        <br><br>
         <style>
         .help-modal-btn {
             background-color: #17623b;
