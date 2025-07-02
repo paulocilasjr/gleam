@@ -222,9 +222,11 @@
             <param name="input_csv" value="mnist_subset.csv" ftype="csv" />
             <param name="image_zip" value="mnist_subset.zip" ftype="zip" />
             <param name="model_name" value="resnet18" />
-            <output name="output_report" file="image_classification_results_report_mnist.html" compare="sim_size" delta="20000" >
+            <output name="output_report">
                 <assert_contents>
-                    <has_text text="Epochs" />
+                    <has_text text="Results Summary" />
+                    <has_text text="Train/Validation Results" />
+                    <has_text text="Test Results" />
                 </assert_contents>
             </output>
 
