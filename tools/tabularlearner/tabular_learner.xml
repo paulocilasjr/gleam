@@ -17,49 +17,67 @@
                 --models '$regression_models'
             #end if
         #end if
+        #if $tune_model
+            --tune_model
+        #end if
         #if $customize_defaults == "true"
                 #if $train_size
-                --train_size '$train_size' 
+                --train_size '$train_size'
                 #end if
                 #if $normalize
-                --normalize  
+                --normalize
                 #end if
                 #if $feature_selection
                 --feature_selection
                 #end if
-                #if $enable_cross_validation == "true" 
-                --cross_validation 
+                #if $enable_cross_validation == "true"
+                    --cross_validation
+                    #if $cross_validation_folds
+                        --cross_validation_folds '$cross_validation_folds'
+                    #end if
                 #end if
-                #if $cross_validation_folds
-                --cross_validation_folds '$cross_validation_folds'
+                #if $enable_cross_validation == "false"
+                    --no_cross_validation
                 #end if
                 #if $remove_outliers
-                --remove_outliers  
+                --remove_outliers
                 #end if
                 #if $remove_multicollinearity
-                --remove_multicollinearity 
+                --remove_multicollinearity
                 #end if
                 #if $polynomial_features
-                --polynomial_features  
+                --polynomial_features
                 #end if
                 #if $fix_imbalance
-                --fix_imbalance 
+                --fix_imbalance
+                #end if
+                #if $probability_threshold
+                --probability_threshold '$probability_threshold'
                 #end if
         #end if
-        #if $test_file
+        #if $has_test_file == "yes"
             --test_file '$test_file'
-        #end if 
-        --model_type '$model_type'    
+        #end if
+        --model_type '$model_type'
         ]]>
     </command>
     <inputs>
         <param name="input_file" type="data" format="csv,tabular" label="Tabular Input Dataset" />
-        <param name="test_file" type="data" format="csv,tabular" optional="true" label="Tabular Test Dataset"
-        help="If a test dataset is not provided, 
-        the input dataset will be split into training, validation, and test sets. 
-        If a test set is provided, the input dataset will be split into training and validation sets. 
-        Cross-validation is applied by default during training." />
-       <param name="target_feature" multiple="false" type="data_column" use_header_names="true" data_ref="input_file" label="Select the target column:" />
+        <conditional name="test_data_choice">
+            <param name="has_test_file" type="select" label="Do you have a separate test dataset?">
+                <option value="no" selected="true">No</option>
+                <option value="yes">Yes</option>
+            </param>
+            <when value="yes">
+                <param name="test_file" type="data" format="csv,tabular" label="Tabular Test Dataset"
+                       help="If a test dataset is provided, the input dataset will be split into training and validation sets only. 
+                             If not, the tool will split your input into training, validation, and test automatically." />
+            </when>
+            <when value="no">
+                <!-- Nothing extra shown -->
+            </when>
+        </conditional>
+        <param name="target_feature" multiple="false" type="data_column" use_header_names="true" data_ref="input_file" label="Select the target column:" />
         <conditional name="model_selection">
             <param name="model_type" type="select" label="Task">
                 <option value="classification">classification</option>
@@ -117,6 +135,7 @@
                 </param>
             </when>
         </conditional>
+        <param name="tune_model" type="boolean" truevalue="True" falsevalue="False" label="Tune hyperparameters" help="Hyperparameter tuning on the best model" />
         <param name="random_seed" type="integer" value="42" label="Random Seed" help="Random seed for reproducibility." />
         <conditional name="advanced_settings">
             <param name="customize_defaults" type="select" label="Customize Default Settings?" help="Select yes if you want to customize the default settings of the experiment.">
@@ -143,6 +162,7 @@
                 <param name="remove_multicollinearity" type="boolean" truevalue="True" falsevalue="False" checked="false" label="Remove Multicollinearity" help="Whether to remove multicollinear features before training." />
                 <param name="polynomial_features" type="boolean" truevalue="True" falsevalue="False" checked="false" label="Polynomial Features" help="Whether to create polynomial features before training." />
                 <param name="fix_imbalance" type="boolean" truevalue="True" falsevalue="False" checked="false" label="Fix Imbalance" help="ONLY for classfication! Whether to use SMOTE or similar methods to fix imbalance in the input dataset." />
+                <param name="probability_threshold" type="float" min="0.0" max="1.0" value="0.5" label="Classification Probability Threshold" help="Only applies to classification. Probability above which a prediction is considered positive. Default is 0.5." />
             </when>
             <when value="false">
                 <!-- No additional parameters to show if the user selects 'No' -->
@@ -150,9 +170,9 @@
         </conditional>
     </inputs>
     <outputs>
-        <data name="comparison_result" format="html" from_work_dir="comparison_result.html" label="${tool.name} analysis report on ${on_string}"/>
         <data name="model" format="h5" from_work_dir="pycaret_model.h5" label="${tool.name} best model on ${on_string}" />
         <data name="best_model_csv" format="csv" from_work_dir="best_model.csv" label="${tool.name} The parameters of the best model on ${on_string}" hidden="true" />
+        <data name="comparison_result" format="html" from_work_dir="comparison_result.html" label="${tool.name} analysis report on ${on_string}" />
     </outputs>
     <tests>
         <test>
@@ -168,8 +188,15 @@
             <param name="cross_validation_folds" value="5"/>
             <param name="remove_outliers" value="true"/>
             <param name="remove_multicollinearity" value="true"/>
+            <param name="probability_threshold" value="0.4" />
             <output name="model" file="expected_model_classification_customized.h5" compare="sim_size"/>
-            <output name="comparison_result" file="expected_comparison_result_classification_customized.html" compare="sim_size" /> 
+            <output name="comparison_result">
+                <assert_contents>
+                    <has_text text="Validation Summary" />
+                    <has_text text="Test Summary" />
+                    <has_text text="Feature Importance" />
+                </assert_contents>
+            </output>
             <output name="best_model_csv" value="expected_best_model_classification_customized.csv" />
         </test>
         <test>
@@ -177,8 +204,53 @@
             <param name="target_feature" value="11"/> 
             <param name="model_type" value="classification"/>
             <param name="random_seed" value="42"/>
+            <param name="customize_defaults" value="true"/>
+            <param name="train_size" value="0.8"/>
+            <param name="normalize" value="true"/>
+            <param name="feature_selection" value="true"/>
+            <param name="enable_cross_validation" value="false"/>
+            <param name="remove_outliers" value="true"/>
+            <param name="remove_multicollinearity" value="true"/>
+            <param name="probability_threshold" value="0.6" />
+            <output name="model" file="expected_model_classification_customized_cross_off.h5" compare="sim_size"/>
+            <output name="comparison_result">
+                <assert_contents>
+                    <has_text text="Validation Summary" />
+                    <has_text text="Test Summary" />
+                    <has_text text="Feature Importance" />
+                </assert_contents>
+            </output>
+            <output name="best_model_csv" value="expected_best_model_classification_customized_cross_off.csv" />
+        </test>
+        <test>
+            <param name="input_file" value="pcr.tsv"/>
+            <param name="target_feature" value="11"/> 
+            <param name="model_type" value="classification"/>
+            <param name="random_seed" value="42"/>
+            <param name="tune_model" value="true"/>
             <output name="model" file="expected_model_classification.h5" compare="sim_size"/>
-            <output name="comparison_result" file="expected_comparison_result_classification.html" compare="sim_size" /> 
+            <output name="comparison_result"> 
+                <assert_contents>
+                    <has_text text="Validation Summary" />
+                    <has_text text="Test Summary" />
+                    <has_text text="Feature Importance" />
+                </assert_contents>
+            </output>
+            <output name="best_model_csv" value="expected_best_model_classification.csv" />
+        </test>
+        <test>
+            <param name="input_file" value="pcr.tsv"/>
+            <param name="target_feature" value="11"/> 
+            <param name="model_type" value="classification"/>
+            <param name="random_seed" value="42"/>
+            <output name="model" file="expected_model_classification.h5" compare="sim_size"/>
+            <output name="comparison_result"> 
+                <assert_contents>
+                    <has_text text="Validation Summary" />
+                    <has_text text="Test Summary" />
+                    <has_text text="Feature Importance" />
+                </assert_contents>
+            </output>
             <output name="best_model_csv" value="expected_best_model_classification.csv" />
         </test>
         <test>
@@ -187,7 +259,13 @@
             <param name="model_type" value="regression"/>
             <param name="random_seed" value="42"/>
             <output name="model" file="expected_model_regression.h5" compare="sim_size" />
-            <output name="comparison_result" file="expected_comparison_result_regression.html" compare="sim_size" /> 
+            <output name="comparison_result">
+                <assert_contents>
+                    <has_text text="Validation Summary" />
+                    <has_text text="Test Summary" />
+                    <has_text text="Feature Importance" />
+                </assert_contents>
+            </output>
             <output name="best_model_csv" value="expected_best_model_regression.csv" />
         </test>
     </tests>
