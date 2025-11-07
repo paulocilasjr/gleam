@@ -59,8 +59,8 @@
             --test_file '$test_file'
         #end if
         --model_type '$model_type'
-        #if $best_model_metric
-            --best_model_metric '$best_model_metric'
+        #if $model_selection.best_model_metric
+            --best_model_metric '$model_selection.best_model_metric'
         #end if
         ]]>
     </command>

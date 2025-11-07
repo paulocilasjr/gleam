@@ -201,7 +201,10 @@ class BaseModelTrainer:
 
     def _normalize_metric(self, m: str) -> str:
         if not m:
-            return "Accuracy"
+            if getattr(self, "task_type", None) == "regression":
+                return "R2"
+            else:
+                return "Accuracy"
         m_low = str(m).strip().lower()
         alias = {
             "auc": "AUC", "roc_auc": "AUC", "roc-auc": "AUC",
@@ -210,7 +213,7 @@ class BaseModelTrainer:
             "recall": "Recall",
             "f1": "F1",
             "kappa": "Kappa",
-            "logloss": "Log Loss", "log_loss": "Log Loss",
+            "logloss": "LogLoss", "log_loss": "LogLoss",
             "pr_auc": "PR-AUC-Weighted", "prauc": "PR-AUC-Weighted",
             "r2": "R2",
             "mae": "MAE",
@@ -244,14 +247,14 @@ class BaseModelTrainer:
         if getattr(self, "cross_validation_folds", None) is not None:
             compare_kwargs["fold"] = self.cross_validation_folds
 
-        chosen_metric = self._normalize_metric(geattr(self, "best_model_metric", None))
+        chosen_metric = self._normalize_metric(getattr(self, "best_model_metric", None))
         if chosen_metric:
-            compare_kwargs["sort"] = chosen
-            self.chosen_metric_label = chosen
+            compare_kwargs["sort"] = chosen_metric
+            self.chosen_metric_label = chosen_metric
             try:
                 setattr(self.exp, "_fold_metric", chosen)
-            except Exception:
-                pass
+            except Exception as e:
+                LOG.warning(f"Failed to set '_fold_metric' to '{chosen_metric}': {e}", exc_info=True)
 
         LOG.info(f"compare_models kwargs: {compare_kwargs}")
         self.best_model = self.exp.compare_models(**compare_kwargs)
