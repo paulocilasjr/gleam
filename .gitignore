@@ -74,7 +74,5 @@ tool_test_output.json
 
 *.log
 
-# Local manuscript working files
-manuscript_tables/
 
 .env
